@@ -69,7 +69,8 @@ jobs:
           rsync -az --delete \
             "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:$REMOTE_STORAGE/blobs/" \
             "$STORAGE_DIR/blobs/"
-          rsync -az --delete --copy-links=false \
+          # -a включает --links: симлинки versions/*/*.svg → blobs/*.svg переносятся как есть
+          rsync -az --delete \
             "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:$REMOTE_STORAGE/versions/" \
             "$STORAGE_DIR/versions/"
           rsync -az \
@@ -120,7 +121,7 @@ jobs:
           rsync -az --ignore-existing \
             "$STORAGE_DIR/blobs/" \
             "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:$REMOTE_STORAGE/blobs/"
-          rsync -az --copy-links=false --ignore-existing \
+          rsync -az --ignore-existing \
             "$STORAGE_DIR/versions/" \
             "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:$REMOTE_STORAGE/versions/"
           rsync -az \
