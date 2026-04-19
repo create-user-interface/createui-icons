@@ -9,6 +9,16 @@
     "url": "git+https://github.com/create-user-interface/createui-icons.git"
   },
   "bugs": "https://github.com/create-user-interface/createui-icons/issues",
+  "keywords": [
+    "icons",
+    "icon",
+    "web-component",
+    "custom-element",
+    "lucide",
+    "svg",
+    "framework-agnostic",
+    "stroke-width"
+  ],
   "type": "module",
   "main": "./dist/icon.js",
   "module": "./dist/icon.js",

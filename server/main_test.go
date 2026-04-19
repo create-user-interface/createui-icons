@@ -164,8 +164,12 @@ func TestIconHandler_NotFound(t *testing.T) {
 		"/0.460.0/missing.svg",
 		"/0.460.0/",
 		"/bad-version/user.svg",
-		"/0.460.0/User.svg",  // uppercase
-		"/0.460.0/us_er.svg", // underscore
+		"/0.460.0/User.svg",           // uppercase
+		"/0.460.0/us_er.svg",          // underscore
+		"/0.460.0/user..svg",          // двойная точка
+		"/0.460.0/user%20.svg",        // url-encoded пробел
+		"/0.460.0/user%2Ffoo.svg",     // закодированный слэш (попытка обхода)
+		"/0.460.0/users!.svg",         // спецсимвол
 		"/0.460.0/../etc/passwd",
 	}
 	for _, path := range cases {
@@ -174,6 +178,32 @@ func TestIconHandler_NotFound(t *testing.T) {
 		s.icon(w, req)
 		if w.Code != http.StatusNotFound {
 			t.Errorf("%s: status = %d, want 404", path, w.Code)
+		}
+	}
+}
+
+// Kebab-case имена — стандарт Lucide (user-round, zoom-in, arrow-up-right).
+// Regex `^[a-z0-9-]+$` должен их пропускать. Проверяем, что роутер не отваливается.
+func TestIconHandler_KebabCase(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "versions", "0.460.0")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	svg := `<svg stroke-width="2"/>`
+	names := []string{"user-round", "zoom-in", "arrow-up-right", "a1b2c3"}
+	for _, n := range names {
+		if err := os.WriteFile(filepath.Join(dir, n+".svg"), []byte(svg), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	s := &server{root: root}
+	for _, n := range names {
+		req := httptest.NewRequest(http.MethodGet, "/0.460.0/"+n+".svg", nil)
+		w := httptest.NewRecorder()
+		s.icon(w, req)
+		if w.Code != http.StatusOK {
+			t.Errorf("%s: status = %d, want 200", n, w.Code)
 		}
 	}
 }
