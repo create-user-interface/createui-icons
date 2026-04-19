@@ -44,13 +44,13 @@ jobs:
       contents: write   # commit + tag + push
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       # ─── SSH-агент для rsync/ssh к VDS ────────────────────────────────────
       - name: Setup SSH agent
-        uses: webfactory/ssh-agent@v0.9.0
+        uses: webfactory/ssh-agent@v0.10.0
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
@@ -140,9 +140,9 @@ jobs:
       # ─── Component build ─────────────────────────────────────────────────
       - name: Setup Node
         if: steps.after.outputs.changed == 'true'
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: component/package-lock.json
           registry-url: 'https://registry.npmjs.org'
