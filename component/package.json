@@ -1,0 +1,45 @@
+{
+  "name": "@create-ui/icons",
+  "version": "1.8.0",
+  "description": "Framework-agnostic icon web component for Create UI",
+  "type": "module",
+  "main": "./dist/icon.js",
+  "module": "./dist/icon.js",
+  "types": "./dist/icon.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/icon.d.ts",
+      "import": "./dist/icon.js"
+    },
+    "./types/react": {
+      "types": "./dist/types-react.d.ts",
+      "import": "./dist/types-react.js"
+    },
+    "./types/solid": {
+      "types": "./dist/types-solid.d.ts",
+      "import": "./dist/types-solid.js"
+    }
+  },
+  "sideEffects": [
+    "./dist/icon.js"
+  ],
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "generate:names": "node scripts/generate-icon-names.mjs",
+    "prebuild": "npm run generate:names",
+    "build": "npm run build:types && npm run build:bundle",
+    "build:types": "tsc",
+    "build:bundle": "esbuild src/icon.ts --bundle --format=iife --global-name=CreateUIIcons --outfile=dist/bundle/createui-icons.js --target=es2020 --minify --sourcemap",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "@types/react": "*",
+    "esbuild": "^0.28.0",
+    "lucide": "1.8.0",
+    "solid-js": "*",
+    "typescript": "^6.0.2"
+  }
+}

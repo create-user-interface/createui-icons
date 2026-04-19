@@ -1,0 +1,52 @@
+[Unit]
+Description=createui-icons HTTP server (Go)
+Documentation=https://icons.createui.dev
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=deploy
+Group=deploy
+
+# Бинарник деплоится в Stage 7 через scp + sudo mv
+ExecStart=/usr/local/bin/icon-server
+
+Restart=always
+RestartSec=2
+# Graceful shutdown — даём 10s на завершение in-flight запросов (см. server/main.go)
+TimeoutStopSec=15
+KillSignal=SIGTERM
+
+# Конфигурация (см. server/README.md)
+Environment=PORT=3000
+Environment=BIND_ADDR=127.0.0.1
+Environment=ICONS_ROOT=/var/icons
+
+# ─── Hardening ────────────────────────────────────────────────────────────────
+# Минимальные привилегии: серверу нужно только читать /var/icons и слушать TCP.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadOnlyPaths=/var/icons
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6
+RestrictNamespaces=true
+RestrictRealtime=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged
+# NB: НЕ блокируем @resources — Go runtime вызывает setrlimit в init.
+
+# Лимиты ресурсов (1 GB RAM сервер)
+MemoryMax=128M
+TasksMax=64
+
+[Install]
+WantedBy=multi-user.target

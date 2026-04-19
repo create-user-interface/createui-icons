@@ -1,0 +1,29 @@
+/tmp
+/out-tsc
+
+/node_modules
+**/node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+/.pnp
+.pnp.js
+
+.vscode/*
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Build output
+component/dist/
+landing/dist/
+
+# Локальный storage иконок — source of truth на VDS, CI тянет rsync'ом
+icons-storage/
+
+# Секреты
+.env
+.npmrc
+*.pem
+id_*

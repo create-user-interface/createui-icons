@@ -1,0 +1,200 @@
+name: sync-lucide
+
+# Еженедельная синхронизация Lucide → bootstrap нового релиза:
+#   1. pull state с VDS (manifest.json + blobs/ + versions/)
+#   2. sync-lucide.sh определяет новые версии и обновляет storage
+#   3. push новых блобов/симлинков на VDS
+#   4. smoke-test SVG-эндпойнта
+#   5. сборка component-бандла под новую версию lucide
+#   6. push бандла на VDS, smoke-test
+#   7. npm publish последней версии
+#   8. commit + tag в репо
+#
+# Если новых версий нет — шаги 3+ пропускаются.
+#
+# Лендинг (Stage 4) пока не подключён — добавить шаг сборки и rsync `landing/dist/`
+# в `/var/www/icons-landing/` после реализации.
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'  # Понедельник 06:00 UTC
+  workflow_dispatch:
+    inputs:
+      from_version:
+        description: 'Override starting version (default: manifest.latest)'
+        required: false
+        default: ''
+
+# Не запускать параллельно — sync пишет в общий VDS-storage.
+concurrency:
+  group: sync-lucide
+  cancel-in-progress: false
+
+env:
+  STORAGE_DIR: ${{ github.workspace }}/icons-storage
+  REMOTE_STORAGE: /var/icons
+  REMOTE_BUNDLES: /var/icons/bundles
+  DOMAIN: icons.createui.dev
+
+jobs:
+  sync-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write   # commit + tag + push
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # ─── SSH-агент для rsync/ssh к VDS ────────────────────────────────────
+      - name: Setup SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Trust VDS host key
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "${{ secrets.SERVER_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+
+      # ─── Подтянуть текущее состояние storage с VDS ───────────────────────
+      # manifest.json — single source of truth о текущей `latest`-версии.
+      # blobs/ + versions/ нужны, чтобы sync-lucide.sh видел уже существующие
+      # хэши (для дедупликации) и мог копировать симлинки из prev-версии.
+      - name: Pull storage state from VDS
+        run: |
+          mkdir -p "$STORAGE_DIR"
+          rsync -az --delete \
+            "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:$REMOTE_STORAGE/blobs/" \
+            "$STORAGE_DIR/blobs/"
+          rsync -az --delete --copy-links=false \
+            "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:$REMOTE_STORAGE/versions/" \
+            "$STORAGE_DIR/versions/"
+          rsync -az \
+            "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:$REMOTE_STORAGE/manifest.json" \
+            "$STORAGE_DIR/manifest.json"
+
+      - name: Detect current version
+        id: before
+        run: |
+          v=$(jq -r '.latest' "$STORAGE_DIR/manifest.json")
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "Current latest: $v"
+
+      # ─── Sync ─────────────────────────────────────────────────────────────
+      # gh authed via GH_TOKEN (preinstalled на ubuntu-latest).
+      # bash 5+ уже доступен.
+      - name: Run sync-lucide.sh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -n "${{ inputs.from_version }}" ]; then
+            bash scripts/sync-lucide.sh sync --storage "$STORAGE_DIR" --from "${{ inputs.from_version }}"
+          else
+            bash scripts/sync-lucide.sh sync --storage "$STORAGE_DIR"
+          fi
+
+      - name: Detect new version
+        id: after
+        run: |
+          v=$(jq -r '.latest' "$STORAGE_DIR/manifest.json")
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          if [ "$v" = "${{ steps.before.outputs.version }}" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No new versions — pipeline will short-circuit."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "New latest: $v (was ${{ steps.before.outputs.version }})"
+          fi
+
+      # ─── Деплой блобов/симлинков ─────────────────────────────────────────
+      # blobs/ — content-addressable, можно с --ignore-existing (хэш = идентичность).
+      # versions/ — только новые директории, без удаления старых (--ignore-existing).
+      # manifest.json — атомарно последним: серверу видно «новую latest» только
+      # после того, как все её блобы и симлинки уже доехали.
+      - name: Push blobs and versions to VDS
+        if: steps.after.outputs.changed == 'true'
+        run: |
+          rsync -az --ignore-existing \
+            "$STORAGE_DIR/blobs/" \
+            "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:$REMOTE_STORAGE/blobs/"
+          rsync -az --copy-links=false --ignore-existing \
+            "$STORAGE_DIR/versions/" \
+            "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:$REMOTE_STORAGE/versions/"
+          rsync -az \
+            "$STORAGE_DIR/manifest.json" \
+            "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:$REMOTE_STORAGE/manifest.json"
+
+      - name: Smoke-test SVG endpoint
+        if: steps.after.outputs.changed == 'true'
+        run: |
+          v="${{ steps.after.outputs.version }}"
+          curl -fsS "https://$DOMAIN/health" > /dev/null
+          # user.svg есть в lucide много лет — стабильный smoke-target
+          curl -fsS "https://$DOMAIN/$v/user.svg" > /dev/null
+          echo "SVG endpoint OK for $v"
+
+      # ─── Component build ─────────────────────────────────────────────────
+      - name: Setup Node
+        if: steps.after.outputs.changed == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: component/package-lock.json
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Bump component version + lucide dep
+        if: steps.after.outputs.changed == 'true'
+        working-directory: component
+        run: |
+          v="${{ steps.after.outputs.version }}"
+          npm version "$v" --no-git-tag-version --allow-same-version
+          npm install --save-dev "lucide@$v"
+
+      - name: Build component bundle
+        if: steps.after.outputs.changed == 'true'
+        working-directory: component
+        run: npm run build
+
+      - name: Deploy CDN bundle to VDS
+        if: steps.after.outputs.changed == 'true'
+        run: |
+          v="${{ steps.after.outputs.version }}"
+          # rsync --mkpath создаст /var/icons/bundles/{ver}/ автоматически (rsync 3.2.3+).
+          rsync -az --mkpath \
+            component/dist/bundle/createui-icons.js \
+            component/dist/bundle/createui-icons.js.map \
+            "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:$REMOTE_BUNDLES/$v/"
+
+      - name: Smoke-test bundle URL
+        if: steps.after.outputs.changed == 'true'
+        run: |
+          v="${{ steps.after.outputs.version }}"
+          curl -fsS "https://$DOMAIN/$v/createui-icons.js" > /dev/null
+          curl -fsS "https://$DOMAIN/$v/createui-icons.js.map" > /dev/null
+          echo "Bundle URL OK for $v"
+
+      # ─── npm publish ─────────────────────────────────────────────────────
+      - name: Publish to npm
+        if: steps.after.outputs.changed == 'true'
+        working-directory: component
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public
+
+      # ─── Commit + tag ────────────────────────────────────────────────────
+      # manifest.json НЕ коммитится — это server state (живёт на VDS).
+      # Коммитим только то, что должно быть в репо: bumped package.json/lock.
+      - name: Commit and tag
+        if: steps.after.outputs.changed == 'true'
+        run: |
+          v="${{ steps.after.outputs.version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add component/package.json component/package-lock.json
+          git commit -m "chore(sync): bump to lucide $v"
+          git tag "v$v"
+          git push --follow-tags
