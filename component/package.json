@@ -2,6 +2,13 @@
   "name": "@createui-dev/icons",
   "version": "1.8.0",
   "description": "Framework-agnostic icon web component for Create UI",
+  "license": "MIT",
+  "homepage": "https://icons.createui.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/create-user-interface/createui-icons.git"
+  },
+  "bugs": "https://github.com/create-user-interface/createui-icons/issues",
   "type": "module",
   "main": "./dist/icon.js",
   "module": "./dist/icon.js",
