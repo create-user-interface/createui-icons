@@ -42,6 +42,7 @@ jobs:
     timeout-minutes: 30
     permissions:
       contents: write   # commit + tag + push
+      id-token: write   # npm Trusted Publishing (OIDC) + --provenance
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -179,12 +180,14 @@ jobs:
           echo "Bundle URL OK for $v"
 
       # ─── npm publish ─────────────────────────────────────────────────────
+      # Trusted Publishing (OIDC): npm CLI получает короткоживущий токен через
+      # id-token workflow permission, проверяет trust-конфигурацию на npm.com
+      # (registry-url + repo + workflow совпадают) и публикует без NPM_TOKEN.
+      # --provenance добавляет SLSA-аттестацию со ссылкой на этот workflow run.
       - name: Publish to npm
         if: steps.after.outputs.changed == 'true'
         working-directory: component
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish --access public
+        run: npm publish --access public --provenance
 
       # ─── Commit + tag ────────────────────────────────────────────────────
       # manifest.json НЕ коммитится — это server state (живёт на VDS).
