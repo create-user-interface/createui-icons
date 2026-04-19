@@ -1,5 +1,5 @@
 {
-  "name": "@create-ui/icons",
+  "name": "@createui-dev/icons",
   "version": "1.8.0",
   "description": "Framework-agnostic icon web component for Create UI",
   "type": "module",

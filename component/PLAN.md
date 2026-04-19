@@ -1,4 +1,4 @@
-# План работы над `@create-ui/icons`
+# План работы над `@createui-dev/icons`
 
 План доведения компонента `<createui-icon>` до production-ready состояния.
 

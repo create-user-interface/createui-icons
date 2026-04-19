@@ -8,7 +8,7 @@
 
 | Модуль | Статус |
 |---|---|
-| `component/` (`@create-ui/icons`) | ✅ Готово (см. `component/PLAN.md`) |
+| `component/` (`@createui-dev/icons`) | ✅ Готово (см. `component/PLAN.md`) |
 | `server/` (Go) | ✅ Готово |
 | `scripts/sync-lucide.sh` | ✅ Готово |
 | `nginx/icons.conf` | ✅ Готово |
@@ -74,7 +74,7 @@ Astro, статическая сборка:
 
 - Главная: описание `<createui-icon>`, установка, «how it works»
 - Примеры кода: HTML/CDN, React, SolidJS, Vue, Svelte
-- Каталог иконок: live-поиск, превью всех иконок текущей версии (dogfooding через `@create-ui/icons`)
+- Каталог иконок: live-поиск, превью всех иконок текущей версии (dogfooding через `@createui-dev/icons`)
 - Changelog: список версий Lucide, даты, количество added/modified/removed (данные из `manifest.json` + compare API)
 - Текущая версия — обновляется CI при синхронизации
 - Сборка `npm run build` → `dist/` → rsync на `/var/www/icons-landing/`

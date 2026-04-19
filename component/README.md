@@ -1,4 +1,4 @@
-# @create-ui/icons
+# @createui-dev/icons
 
 Framework-agnostic icon web component for [Create UI](https://createui.dev). One custom element, ~1.5 kB gzip, 1939 Lucide icons served as CSS-masked SVGs from the CDN.
 
@@ -12,7 +12,7 @@ Framework-agnostic icon web component for [Create UI](https://createui.dev). One
 ## Install
 
 ```sh
-npm i @create-ui/icons
+npm i @createui-dev/icons
 ```
 
 Or skip the install entirely and use the CDN:
@@ -39,8 +39,8 @@ One `<script>` tag registers `<createui-icon>` globally. Works anywhere HTML wor
 ### React
 
 ```tsx
-import '@create-ui/icons'
-import '@create-ui/icons/types/react'
+import '@createui-dev/icons'
+import '@createui-dev/icons/types/react'
 
 export function Button() {
   return <createui-icon name="arrow-right" size={24} stroke={1.5} />
@@ -52,8 +52,8 @@ The `/types/react` import adds JSX typings only — it compiles to an empty modu
 ### Solid
 
 ```tsx
-import '@create-ui/icons'
-import '@create-ui/icons/types/solid'
+import '@createui-dev/icons'
+import '@createui-dev/icons/types/solid'
 
 export function Button() {
   return <createui-icon name="check" size={20} />
@@ -64,7 +64,7 @@ export function Button() {
 
 ```vue
 <script setup>
-import '@create-ui/icons'
+import '@createui-dev/icons'
 </script>
 
 <template>
@@ -88,7 +88,7 @@ vue({
 
 ```svelte
 <script>
-  import '@create-ui/icons'
+  import '@createui-dev/icons'
 </script>
 
 <createui-icon name="menu" size={24} />
@@ -99,7 +99,7 @@ Svelte handles custom elements natively — no extra configuration needed.
 ### Imperative (any framework)
 
 ```ts
-import { createIcon } from '@create-ui/icons'
+import { createIcon } from '@createui-dev/icons'
 
 const icon = createIcon('bell', 32, 2)
 document.body.appendChild(icon)
@@ -146,7 +146,7 @@ Factory for programmatic creation. Returns a typed `CreateUIIconElement`. Throws
 ### Types
 
 ```ts
-import type { TIconName, IIconProps, CreateUIIconElement } from '@create-ui/icons'
+import type { TIconName, IIconProps, CreateUIIconElement } from '@createui-dev/icons'
 ```
 
 - `TIconName` — union of all valid icon names for this version.
@@ -231,7 +231,7 @@ https://icons.createui.dev/{LUCIDE_VERSION}/{name}.svg?stroke={value}
 
 and sets it as a CSS `mask-image`, with `background-color: currentColor` as the fill. Stroke values are quantized client-side (to `0.25` steps) so the CDN cache key stays stable.
 
-Because the Lucide version is baked into the URL, icons from a given `@create-ui/icons` release always resolve to the same SVGs — immutable, safe to cache forever.
+Because the Lucide version is baked into the URL, icons from a given `@createui-dev/icons` release always resolve to the same SVGs — immutable, safe to cache forever.
 
 ---
 

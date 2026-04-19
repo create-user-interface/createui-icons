@@ -1,13 +1,13 @@
 # CreateUI Icons — Спецификация
 
-Монорепозиторий, объединяющий сервер хостинга SVG-иконок, npm-пакет `@create-ui/icons` (Web Component) и лендинг компонента. Версия пакета === версия Lucide (сквозное версионирование).
+Монорепозиторий, объединяющий сервер хостинга SVG-иконок, npm-пакет `@createui-dev/icons` (Web Component) и лендинг компонента. Версия пакета === версия Lucide (сквозное версионирование).
 
 ---
 
 ## Стек
 
 - **Go** — HTTP-сервер, подстановка stroke-width в SVG
-- **TypeScript** — Web Component `<createui-icon>`, npm-пакет `@create-ui/icons`
+- **TypeScript** — Web Component `<createui-icon>`, npm-пакет `@createui-dev/icons`
 - **Astro / HTML** — лендинг компонента (статика)
 - **Nginx** — reverse proxy, кэширование, SSL-терминация, раздача лендинга
 - **GitHub Actions** — еженедельный крон: обновление Lucide, деплой на сервер, публикация npm-пакета
@@ -17,11 +17,11 @@
 
 ## Версионирование
 
-Версия `@create-ui/icons` всегда совпадает с версией Lucide:
+Версия `@createui-dev/icons` всегда совпадает с версией Lucide:
 
 ```
-Lucide 0.460.0 → @create-ui/icons@0.460.0
-Lucide 0.461.0 → @create-ui/icons@0.461.0
+Lucide 0.460.0 → @createui-dev/icons@0.460.0
+Lucide 0.461.0 → @createui-dev/icons@0.461.0
 ```
 
 Одна версия — один набор иконок на сервере, один npm-пакет, один URL. Никакого маппинга.
@@ -39,7 +39,7 @@ createui-icons/
 ├── component/
 │   ├── src/
 │   │   └── icon.ts          # Web Component <createui-icon>
-│   ├── package.json         # @create-ui/icons, версия = версия Lucide
+│   ├── package.json         # @createui-dev/icons, версия = версия Lucide
 │   └── tsconfig.json
 │
 ├── landing/
@@ -510,7 +510,7 @@ Workflow завершается на шаге 1, ничего не делает.
 
 ---
 
-## Web Component (`@create-ui/icons`)
+## Web Component (`@createui-dev/icons`)
 
 ### Что делает
 
@@ -537,10 +537,10 @@ https://icons.createui.dev/{lucide-version}/{name}.svg?stroke={stroke}
 ### Экспорты пакета
 
 ```ts
-import '@create-ui/icons'                          // регистрация Web Component
-import { createIcon } from '@create-ui/icons'      // программное создание
-import type { TIconName } from '@create-ui/icons'  // тип имён иконок
-import type { IIconProps } from '@create-ui/icons'  // интерфейс атрибутов
+import '@createui-dev/icons'                          // регистрация Web Component
+import { createIcon } from '@createui-dev/icons'      // программное создание
+import type { TIconName } from '@createui-dev/icons'  // тип имён иконок
+import type { IIconProps } from '@createui-dev/icons'  // интерфейс атрибутов
 ```
 
 ---
@@ -691,7 +691,7 @@ URL содержит версию Lucide. При обновлении:
 2. CI скачивает только изменённые SVG, хэширует, создаёт блобы
 3. CI деплоит новые блобы и симлинки на сервер
 4. CI обновляет лендинг (changelog, каталог)
-5. CI публикует `@create-ui/icons@{lucide-version}` в npm
+5. CI публикует `@createui-dev/icons@{lucide-version}` в npm
 6. Пользователь обновляет пакет — компонент автоматически запрашивает иконки по новому URL
 7. Кэш старых версий доживает неделю и вытесняется сам
 
