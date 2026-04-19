@@ -50,7 +50,7 @@ func main() {
 	listen := addr + ":" + port
 	srv := &http.Server{
 		Addr:              listen,
-		Handler:           logRequests(mux),
+		Handler:           mux,
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      10 * time.Second,
@@ -89,24 +89,6 @@ func envOr(key, def string) string {
 	return def
 }
 
-func logRequests(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
-		lrw := &loggingResponseWriter{ResponseWriter: w, status: http.StatusOK}
-		h.ServeHTTP(lrw, r)
-		log.Printf("%s %s %d %s", r.Method, r.URL.RequestURI(), lrw.status, time.Since(start))
-	})
-}
-
-type loggingResponseWriter struct {
-	http.ResponseWriter
-	status int
-}
-
-func (lrw *loggingResponseWriter) WriteHeader(code int) {
-	lrw.status = code
-	lrw.ResponseWriter.WriteHeader(code)
-}
 
 func (s *server) health(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
@@ -155,7 +137,10 @@ func (s *server) icon(w http.ResponseWriter, r *http.Request) {
 
 	h := w.Header()
 	h.Set("Content-Type", "image/svg+xml; charset=utf-8")
-	h.Set("Cache-Control", "public, max-age=604800, immutable")
+	// max-age=1y — URL versioned (/{semver}/...) + stroke квантуется до 0.25:
+	// контент для данного URL зафиксирован навсегда. `immutable` запрещает
+	// revalidation даже на Cmd+R. Match с CDN-бандлом в nginx/icon.conf.
+	h.Set("Cache-Control", "public, max-age=31536000, immutable")
 	h.Set("Access-Control-Allow-Origin", "*")
 	h.Set("Content-Length", strconv.Itoa(len(out)))
 	w.WriteHeader(http.StatusOK)

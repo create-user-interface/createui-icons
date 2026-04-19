@@ -1,16 +1,21 @@
 #!/usr/bin/env bash
-# bootstrap.sh — provisioning Ubuntu 24.04 VDS для icons.createui.dev.
+# bootstrap.sh — provisioning Ubuntu 24.04 VDS для createui icons.
+#
+# Обслуживает два домена на одном сервере:
+#   - icons.createui.dev  — лендинг (статика Astro)
+#   - icon.createui.dev   — API (SVG + CDN-бандл)
 #
 # Запускается на чистом сервере под root (или sudo).
 # Идемпотентен: можно перезапускать после фейла, шаги проверяют состояние.
 #
 # Конфигурация через env vars (или дефолты):
-#   DEPLOY_USER   имя deploy-пользователя (default: deploy)
-#   TIMEZONE      timezone (default: Europe/Moscow)
-#   SSH_PORT      SSH-порт (для UFW и fail2ban, default: 22)
-#   SSH_PUBKEY    публичный ключ для deploy-юзера (без него deploy остаётся
-#                 без ключа — CI/CD деплой работать не будет)
-#   DOMAIN        домен (только для логов, default: icons.createui.dev)
+#   DEPLOY_USER     имя deploy-пользователя (default: deploy)
+#   TIMEZONE        timezone (default: Europe/Moscow)
+#   SSH_PORT        SSH-порт (для UFW и fail2ban, default: 22)
+#   SSH_PUBKEY      публичный ключ для deploy-юзера (без него deploy остаётся
+#                   без ключа — CI/CD деплой работать не будет)
+#   DOMAIN_LANDING  домен лендинга (default: icons.createui.dev)
+#   DOMAIN_API      домен API  (default: icon.createui.dev)
 #
 # ВНИМАНИЕ: sshd_config не трогается — root-логин и password auth остаются как
 # в дефолте Ubuntu. Сменить root-пароль рекомендуется после первого деплоя.
@@ -24,7 +29,8 @@ DEPLOY_USER="${DEPLOY_USER:-deploy}"
 TIMEZONE="${TIMEZONE:-Europe/Moscow}"
 SSH_PORT="${SSH_PORT:-22}"
 SSH_PUBKEY="${SSH_PUBKEY:-}"
-DOMAIN="${DOMAIN:-icons.createui.dev}"
+DOMAIN_LANDING="${DOMAIN_LANDING:-icons.createui.dev}"
+DOMAIN_API="${DOMAIN_API:-icon.createui.dev}"
 
 log()  { printf '\n[%s] %s\n' "$(date +%H:%M:%S)" "$*"; }
 fail() { printf '\nERROR: %s\n' "$*" >&2; exit 1; }
@@ -163,28 +169,33 @@ else
 fi
 
 # ─── Done ─────────────────────────────────────────────────────────────────────
-log "✓ bootstrap done for $DOMAIN"
+SERVER_IP="$(curl -s -4 ifconfig.io 2>/dev/null || echo "<server IP>")"
+log "✓ bootstrap done for $DOMAIN_LANDING + $DOMAIN_API"
 cat <<EOF
 
 ─── Что дальше (Stage 7 — первичный деплой) ───
-  1) DNS:  A-запись $DOMAIN → $(curl -s -4 ifconfig.io 2>/dev/null || echo "<server IP>")
+  1) DNS:  A-записи
+       $DOMAIN_LANDING → $SERVER_IP
+       $DOMAIN_API     → $SERVER_IP
   2) Build Go binary локально:
        cd server && GOOS=linux GOARCH=amd64 go build -o icon-server .
   3) Copy + enable:
-       scp icon-server $DEPLOY_USER@$DOMAIN:/tmp/
-       ssh $DEPLOY_USER@$DOMAIN 'sudo mv /tmp/icon-server /usr/local/bin/ && sudo systemctl enable --now icon-server'
+       scp icon-server $DEPLOY_USER@$DOMAIN_API:/tmp/
+       ssh $DEPLOY_USER@$DOMAIN_API 'sudo mv /tmp/icon-server /usr/local/bin/ && sudo systemctl enable --now icon-server'
   4) Bootstrap иконок локально и rsync на сервер:
        bash scripts/sync-lucide.sh bootstrap --version 1.8.0 --storage ./icons-storage
-       rsync -avz icons-storage/ $DEPLOY_USER@$DOMAIN:/var/icons/
-  5) Nginx config:
-       scp nginx/icons.conf $DEPLOY_USER@$DOMAIN:/tmp/
-       scp nginx/icons-cache.conf $DEPLOY_USER@$DOMAIN:/tmp/
-       ssh $DEPLOY_USER@$DOMAIN '...'   # см. nginx/README.md
-  6) Certbot:
-       ssh $DEPLOY_USER@$DOMAIN 'sudo certbot --nginx -d $DOMAIN'
+       rsync -avz icons-storage/ $DEPLOY_USER@$DOMAIN_API:/var/icons/
+  5) Nginx config (оба server-блока + http-level кэш):
+       scp nginx/icons.conf       $DEPLOY_USER@$DOMAIN_API:/tmp/
+       scp nginx/icon.conf        $DEPLOY_USER@$DOMAIN_API:/tmp/
+       scp nginx/icons-cache.conf $DEPLOY_USER@$DOMAIN_API:/tmp/
+       ssh $DEPLOY_USER@$DOMAIN_API '...'   # см. nginx/README.md
+  6) Certbot (каждый домен отдельно, или один сертификат с SAN):
+       ssh $DEPLOY_USER@$DOMAIN_API 'sudo certbot --nginx -d $DOMAIN_LANDING -d $DOMAIN_API'
   7) Smoke-test:
-       curl https://$DOMAIN/health
-       curl -I https://$DOMAIN/1.8.0/user.svg
+       curl https://$DOMAIN_API/health
+       curl -I https://$DOMAIN_API/1.8.0/user.svg
+       curl -I https://$DOMAIN_LANDING/
 
 ─── Безопасность ───
   sshd НЕ менялся: root-логин и password auth остаются. После первого

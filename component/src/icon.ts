@@ -16,7 +16,7 @@ export interface CreateUIIconElement extends HTMLElement {
   stroke: number
 }
 
-const BASE_URL = 'https://icons.createui.dev'
+const BASE_URL = 'https://icon.createui.dev'
 const STROKE_MIN = 0.25
 const STROKE_MAX = 10
 const STROKE_STEP = 0.25

@@ -11,11 +11,11 @@
 | `component/` (`@createui-dev/icons`) | ✅ Готово (см. `component/PLAN.md`) |
 | `server/` (Go) | ✅ Готово |
 | `scripts/sync-lucide.sh` | ✅ Готово |
-| `nginx/icons.conf` | ✅ Готово |
+| `nginx/icons.conf` + `nginx/icon.conf` | ✅ Готово (два домена: лендинг + API) |
 | `landing/` (Astro) | ⏳ Только README |
 | `.github/workflows/sync.yml` | ✅ Готово |
 | VDS (provisioning) | ✅ Настроен (`85.239.48.234`) |
-| Первичный деплой | ✅ Готово — https://icons.createui.dev |
+| Первичный деплой | ✅ Готово — https://icons.createui.dev (лендинг) + https://icon.createui.dev (API) |
 
 ---
 
@@ -29,7 +29,7 @@
 - Квантование `stroke` до ближайшего шага 0.25 — мирроит клиент для cache hit rate
 - Чтение `/var/icons/versions/{version}/{icon}.svg` (прозрачно через симлинк на блоб)
 - Подстановка `stroke-width="2"` → `stroke-width="{квант}"`
-- Заголовки: `Content-Type: image/svg+xml`, `Cache-Control: public, max-age=604800, immutable`, `Access-Control-Allow-Origin: *`
+- Заголовки: `Content-Type: image/svg+xml`, `Cache-Control: public, max-age=31536000, immutable`, `Access-Control-Allow-Origin: *`
 - Обработка 400 (валидация), 404 (файл не найден)
 - Локальный smoke-test против фиктивного `/var/icons`
 
@@ -52,10 +52,17 @@
 
 ---
 
-## Этап 3 — Nginx-конфиг (`nginx/icons.conf`)
+## Этап 3 — Nginx-конфиги (`nginx/icons.conf` + `nginx/icon.conf`)
 
-- 443/SSL + HTTP/2, `server_name icons.createui.dev`
+Два server-блока на одном инстансе.
+
+**`nginx/icons.conf`** — лендинг, `server_name icons.createui.dev`:
+- 443/SSL + HTTP/2
 - `location /` → статика лендинга из `/var/www/icons-landing/`
+- CSP разрешает `img-src`/`script-src` с `https://icon.createui.dev` (чтобы `<createui-icon>` на лендинге мог грузить иконки/бандл).
+
+**`nginx/icon.conf`** — API, `server_name icon.createui.dev`:
+- 443/SSL + HTTP/2
 - `location ~ ^/\d+\.\d+\.\d+/.+\.svg$` → `proxy_pass http://127.0.0.1:3000` + `proxy_cache icons`
   - Ключ: `$uri$is_args$args`
   - TTL 7d, `inactive=7d`, `max_size=200m`, `proxy_cache_lock on`
@@ -63,8 +70,11 @@
 - `location ~ ^/(?<ver>[^/]+)/createui-icons\.js(\.map)?$` → статика бандла из `/var/icons/bundles/$ver/` (см. `component/PLAN.md` §10)
   - `Cache-Control: public, max-age=31536000, immutable`
 - `location = /health` → прямой proxy_pass на Go
-- Базовый `limit_req` rate-limit
+- `location /` → 301 на `https://icons.createui.dev` (случайный заход в браузер)
+- `limit_req` rate-limit (только API-домен)
 - Security headers (HSTS, X-Content-Type-Options, и т.п.)
+
+http-level директивы (`proxy_cache_path`, `limit_req_zone`) вынесены в `nginx/icons-cache.conf` (ставится в `/etc/nginx/conf.d/`), используются API-доменом.
 
 ---
 
@@ -92,7 +102,7 @@ Astro, статическая сборка:
   5. `cd component && npm version {latest} --no-git-tag-version && npm install lucide@{latest} && npm run build && npm publish --access public`
   6. `rsync` CDN-бандла в `/var/icons/bundles/{latest}/`
   7. `git tag v{latest}` + push
-- Secrets: `SERVER_HOST`, `SERVER_USER`, `SSH_PRIVATE_KEY`, `NPM_TOKEN`
+- Secrets: `SERVER_HOST`, `SERVER_USER`, `SSH_PRIVATE_KEY` (npm-публикация — через Trusted Publishing / OIDC, без `NPM_TOKEN`)
 - Публикация в npm — только одна (последняя) версия за итерацию, промежуточные остаются на сервере
 
 ---
@@ -138,16 +148,16 @@ Astro, статическая сборка:
 - Копирование `/usr/local/bin/icon-server`
 - Systemd-юнит (`/etc/systemd/system/icon-server.service`): слушает `127.0.0.1:3000`, `Restart=always`, `User=deploy`
 - Bootstrap: локальный прогон `sync-lucide.sh` для Lucide 1.8.0 → rsync блобов/симлинков/`manifest.json` на сервер
-- Certbot: `certbot --nginx -d icons.createui.dev`
-- Применение `nginx/icons.conf`, `nginx -t`, `systemctl reload nginx`
+- Certbot: `certbot --nginx -d icons.createui.dev -d icon.createui.dev` (один сертификат с SAN; renewal общий)
+- Применение `nginx/icons.conf` + `nginx/icon.conf`, `nginx -t`, `systemctl reload nginx`
 - Первая сборка и деплой лендинга
 - Загрузка CDN-бандла в `/var/icons/bundles/1.8.0/`
 - Регистрация SSH deploy-key в GitHub для Actions
 - Финальная валидация:
-  - `curl https://icons.createui.dev/health`
-  - `curl https://icons.createui.dev/1.8.0/user.svg`
-  - `curl https://icons.createui.dev/1.8.0/createui-icons.js`
-  - Открыть лендинг в браузере
+  - `curl https://icon.createui.dev/health`
+  - `curl https://icon.createui.dev/1.8.0/user.svg`
+  - `curl https://icon.createui.dev/1.8.0/createui-icons.js`
+  - Открыть лендинг `https://icons.createui.dev/` в браузере
 
 ---
 

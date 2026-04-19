@@ -3,7 +3,7 @@
 Framework-agnostic icon web component for [Create UI](https://createui.dev). One custom element, ~1.5 kB gzip, 1939 Lucide icons served as CSS-masked SVGs from the CDN.
 
 - **No framework coupling.** Works with React, Solid, Vue, Svelte, Preact, Lit, or plain HTML.
-- **No icon bundle.** Icons are fetched lazily from `https://icons.createui.dev`. Unused icons = 0 bytes shipped.
+- **No icon bundle.** Icons are fetched lazily from `https://icon.createui.dev`. Unused icons = 0 bytes shipped.
 - **Version-pinned.** The package version matches the Lucide version — icons never silently drift between releases.
 - **Styled with `currentColor`.** Color, size, and stroke width are all controllable from CSS or attributes.
 
@@ -18,7 +18,7 @@ npm i @createui-dev/icons
 Or skip the install entirely and use the CDN:
 
 ```html
-<script src="https://icons.createui.dev/1.8.0/createui-icons.js"></script>
+<script src="https://icon.createui.dev/1.8.0/createui-icons.js"></script>
 ```
 
 ---
@@ -28,7 +28,7 @@ Or skip the install entirely and use the CDN:
 ### Plain HTML / CDN
 
 ```html
-<script src="https://icons.createui.dev/1.8.0/createui-icons.js"></script>
+<script src="https://icon.createui.dev/1.8.0/createui-icons.js"></script>
 
 <createui-icon name="arrow-right" size="24" stroke="1.5"></createui-icon>
 <createui-icon name="heart" aria-label="Favorite"></createui-icon>
@@ -108,7 +108,7 @@ document.body.appendChild(icon)
 Or via the CDN global:
 
 ```html
-<script src="https://icons.createui.dev/1.8.0/createui-icons.js"></script>
+<script src="https://icon.createui.dev/1.8.0/createui-icons.js"></script>
 <script>
   document.body.appendChild(CreateUIIcons.createIcon('bell', 32, 2))
 </script>
@@ -226,7 +226,7 @@ Requires `ElementInternals` and Shadow DOM. CSS `mask-*` properties are shipped 
 When the element is connected, it builds a URL:
 
 ```
-https://icons.createui.dev/{LUCIDE_VERSION}/{name}.svg?stroke={value}
+https://icon.createui.dev/{LUCIDE_VERSION}/{name}.svg?stroke={value}
 ```
 
 and sets it as a CSS `mask-image`, with `background-color: currentColor` as the fill. Stroke values are quantized client-side (to `0.25` steps) so the CDN cache key stays stable.

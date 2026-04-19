@@ -34,41 +34,57 @@ Lucide 0.461.0 → @createui-dev/icons@0.461.0
 createui-icons/
 ├── server/
 │   ├── main.go              # HTTP-сервер (иконки API)
+│   ├── main_test.go         # Юнит-тесты
 │   └── go.mod
 │
 ├── component/
 │   ├── src/
-│   │   └── icon.ts          # Web Component <createui-icon>
+│   │   ├── icon.ts          # Web Component <createui-icon>
+│   │   ├── icon-names.types.ts  # Type union всех имён иконок (генерируется)
+│   │   ├── types-react.ts   # Типизация для JSX (React)
+│   │   ├── types-solid.ts   # Типизация для JSX (SolidJS)
+│   │   └── version.ts       # Экспорт текущей версии пакета
+│   ├── scripts/             # Build/codegen-скрипты
 │   ├── package.json         # @createui-dev/icons, версия = версия Lucide
 │   └── tsconfig.json
 │
 ├── landing/
-│   ├── src/                 # Исходники лендинга
+│   ├── src/                 # Исходники лендинга (пока пусто)
 │   └── dist/                # Собранная статика (деплоится на сервер)
 │
 ├── scripts/
-│   └── sync-lucide.sh       # Скрипт синхронизации иконок из Lucide
+│   ├── sync-lucide.sh       # Скрипт синхронизации иконок из Lucide
+│   └── bump-lucide.mjs      # Локальное обновление lucide-версии
 │
 ├── nginx/
-│   └── icons.conf           # Пример конфига Nginx
+│   ├── icons.conf           # Server-блок лендинга (icons.createui.dev)
+│   ├── icon.conf            # Server-блок API  (icon.createui.dev)
+│   └── icons-cache.conf     # http-level (proxy_cache_path, limit_req_zone)
+│
+├── provisioning/
+│   ├── bootstrap.sh         # Первичная настройка чистого VDS
+│   └── icon-server.service  # Systemd-юнит для Go-сервера
 │
 └── .github/
     └── workflows/
-        └── sync.yml         # Еженедельный крон
+        └── sync.yml         # Еженедельный крон (sync Lucide → publish)
 ```
 
 ---
 
-## Домен
+## Домены
 
-```
-icons.createui.dev
-```
+Два поддомена на одном сервере:
 
-Один домен обслуживает и API иконок, и лендинг. Nginx разделяет по пути:
+- `icons.createui.dev` — **лендинг** (статика Astro, отдаётся Nginx напрямую).
+- `icon.createui.dev`  — **API**: SVG-иконки (Go-сервер за `proxy_cache`) и CDN-бандл компонента (`/{version}/createui-icons.js`).
 
-- `icons.createui.dev/` — лендинг (статика)
-- `icons.createui.dev/{version}/{icon}.svg` — API иконок (Go-сервер)
+Разделение:
+
+- `https://icons.createui.dev/` — лендинг
+- `https://icon.createui.dev/{version}/{icon}.svg` — SVG-API
+- `https://icon.createui.dev/{version}/createui-icons.js` — CDN-бандл
+- `https://icon.createui.dev/health` — healthcheck Go-сервера
 
 ---
 
@@ -89,7 +105,7 @@ icons.createui.dev
 ## Формат URL (API иконок)
 
 ```
-https://icons.createui.dev/{version}/{icon}.svg?stroke={value}
+https://icon.createui.dev/{version}/{icon}.svg?stroke={value}
 ```
 
 | Параметр | Описание | Пример |
@@ -158,7 +174,7 @@ stroke-width="2"  →  stroke-width="{квантованное значение}
 ```
 HTTP 200
 Content-Type: image/svg+xml
-Cache-Control: public, max-age=604800
+Cache-Control: public, max-age=31536000, immutable
 Access-Control-Allow-Origin: *
 ```
 
@@ -431,7 +447,7 @@ scp manifest.json deploy@server:/var/icons/manifest.json
 # Проверить что сервер отдаёт иконки новых версий
 for version in $NEW_VERSIONS; do
   STATUS=$(curl -s -o /dev/null -w '%{http_code}' \
-    "https://icons.createui.dev/${version}/user.svg")
+    "https://icon.createui.dev/${version}/user.svg")
   [ "$STATUS" = "200" ] || fail "Server check failed for version ${version}"
 done
 ```
@@ -521,7 +537,7 @@ Workflow завершается на шаге 1, ничего не делает.
 Компонент знает версию Lucide (зашита при сборке, равна версии пакета) и подставляет её в URL:
 
 ```
-https://icons.createui.dev/{lucide-version}/{name}.svg?stroke={stroke}
+https://icon.createui.dev/{lucide-version}/{name}.svg?stroke={stroke}
 ```
 
 Версия пакета = версия Lucide = версия в URL. Обновил пакет — иконки автоматически запрашиваются с нового пути.
@@ -547,27 +563,39 @@ import type { IIconProps } from '@createui-dev/icons'  // интерфейс а�
 
 ## Nginx — роутинг
 
-Nginx обслуживает один домен, разделяя трафик по пути:
+Nginx обслуживает два server-блока на одном инстансе:
 
 ```nginx
+# icons.createui.dev — лендинг
 server {
     listen 443 ssl http2;
     server_name icons.createui.dev;
 
-    # Лендинг — статика
     location / {
         root /var/www/icons-landing;
-        try_files $uri $uri/index.html =404;
+        try_files $uri $uri/ $uri.html =404;
+    }
+}
+
+# icon.createui.dev — API (SVG + CDN-бандл)
+server {
+    listen 443 ssl http2;
+    server_name icon.createui.dev;
+
+    # CDN-бандл (статика из /var/icons/bundles/{ver}/)
+    location ~ "^/[0-9]+\.[0-9]+\.[0-9]+/createui-icons\.js(\.map)?$" {
+        root /var/icons/bundles;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        add_header Access-Control-Allow-Origin "*";
     }
 
-    # API иконок — Go-сервер с кэшированием
-    location ~ ^/\d+\.\d+\.\d+/ {
+    # SVG-иконки — Go-сервер с кэшированием
+    location ~ "^/[0-9]+\.[0-9]+\.[0-9]+/[a-z0-9-]+\.svg$" {
         proxy_cache icons;
         proxy_cache_key "$uri$is_args$args";
         proxy_cache_valid 200 7d;
         proxy_cache_lock on;
 
-        add_header Cache-Control "public, max-age=604800";
         add_header X-Cache-Status $upstream_cache_status;
 
         proxy_pass http://127.0.0.1:3000;
@@ -579,6 +607,8 @@ server {
     }
 }
 ```
+
+Полные конфиги — в `nginx/` (см. `nginx/README.md`).
 
 ---
 
@@ -636,34 +666,34 @@ server {
 | `SERVER_HOST` | IP-адрес или домен VDS |
 | `SERVER_USER` | Пользователь для SSH-подключения |
 | `SSH_PRIVATE_KEY` | Приватный SSH-ключ для деплоя |
-| `NPM_TOKEN` | Токен для `npm publish` |
+
+Для `npm publish` долгоживущий `NPM_TOKEN` **не используется**: настроено [Trusted Publishing (OIDC)](https://docs.npmjs.com/trusted-publishers) — npm CLI получает короткоживущий токен по `id-token: write` permission GitHub Actions, проверяет trust-конфигурацию в npm.com (репо + workflow-файл должны совпадать) и публикует с `--provenance` (SLSA-аттестация).
 
 ### Использование в workflow
 
 ```yaml
 jobs:
-  sync:
+  sync-and-deploy:
     runs-on: ubuntu-latest
-    env:
-      SERVER_HOST: ${{ secrets.SERVER_HOST }}
-      SERVER_USER: ${{ secrets.SERVER_USER }}
-      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-
+    permissions:
+      contents: write   # commit + tag
+      id-token: write   # npm Trusted Publishing
     steps:
-      - name: Setup SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+      - uses: webfactory/ssh-agent@v0.10.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
       - name: Deploy to server
-        run: rsync -az blobs/ $SERVER_USER@$SERVER_HOST:/var/icons/blobs/
+        run: rsync -az blobs/ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/var/icons/blobs/
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'   # обязательно для Trusted Publishing
 
       - name: Publish to npm
-        run: |
-          echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > .npmrc
-          npm publish --access public
+        run: npm publish --access public --provenance
+        working-directory: component
 ```
 
 ### .gitignore
@@ -707,7 +737,7 @@ URL содержит версию Lucide. При обновлении:
 4. Создать структуру директорий: `/var/icons/blobs/`, `/var/icons/versions/`
 5. Выполнить начальную синхронизацию (скачать все иконки текущей версии Lucide)
 6. Собрать лендинг, скопировать в `/var/www/icons-landing/`
-7. Настроить Nginx по шаблону из `nginx/icons.conf`
+7. Настроить Nginx по шаблонам из `nginx/icons.conf` (лендинг) и `nginx/icon.conf` (API)
 8. Получить SSL-сертификат (certbot)
 9. Настроить SSH-ключ для GitHub Actions (деплой иконок и лендинга)
 

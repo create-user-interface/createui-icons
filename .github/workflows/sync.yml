@@ -34,7 +34,10 @@ env:
   STORAGE_DIR: ${{ github.workspace }}/icons-storage
   REMOTE_STORAGE: /var/icons
   REMOTE_BUNDLES: /var/icons/bundles
-  DOMAIN: icons.createui.dev
+  # API: /health, /{ver}/*.svg, /{ver}/createui-icons.js
+  DOMAIN_API: icon.createui.dev
+  # Лендинг (сейчас не используется в этом workflow — оставлено для будущих smoke-тестов лендинга)
+  DOMAIN_LANDING: icons.createui.dev
 
 jobs:
   sync-and-deploy:
@@ -133,9 +136,9 @@ jobs:
         if: steps.after.outputs.changed == 'true'
         run: |
           v="${{ steps.after.outputs.version }}"
-          curl -fsS "https://$DOMAIN/health" > /dev/null
+          curl -fsS "https://$DOMAIN_API/health" > /dev/null
           # user.svg есть в lucide много лет — стабильный smoke-target
-          curl -fsS "https://$DOMAIN/$v/user.svg" > /dev/null
+          curl -fsS "https://$DOMAIN_API/$v/user.svg" > /dev/null
           echo "SVG endpoint OK for $v"
 
       # ─── Component build ─────────────────────────────────────────────────
@@ -175,8 +178,8 @@ jobs:
         if: steps.after.outputs.changed == 'true'
         run: |
           v="${{ steps.after.outputs.version }}"
-          curl -fsS "https://$DOMAIN/$v/createui-icons.js" > /dev/null
-          curl -fsS "https://$DOMAIN/$v/createui-icons.js.map" > /dev/null
+          curl -fsS "https://$DOMAIN_API/$v/createui-icons.js" > /dev/null
+          curl -fsS "https://$DOMAIN_API/$v/createui-icons.js.map" > /dev/null
           echo "Bundle URL OK for $v"
 
       # ─── npm publish ─────────────────────────────────────────────────────
@@ -202,3 +205,58 @@ jobs:
           git commit -m "chore(sync): bump to lucide $v"
           git tag "v$v"
           git push --follow-tags
+
+      # ─── GitHub Release ──────────────────────────────────────────────────
+      # Создаётся после пуша тега. Diff берём из Lucide compare API между
+      # before-version (предыдущая опубликованная) и after-version (новая).
+      # Если за неделю Lucide выпустил несколько релизов — видим суммарный diff,
+      # совпадающий с тем, что реально обновилось в пакете.
+      - name: Create GitHub release
+        if: steps.after.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          before="${{ steps.before.outputs.version }}"
+          after="${{ steps.after.outputs.version }}"
+
+          # Собрать список изменений из Lucide compare API.
+          # --paginate — на случай крупного рефакторинга с > 300 изменённых файлов.
+          # `changed` — алиас `modified` в некоторых ответах GitHub API.
+          files=$(gh api --paginate "repos/lucide-icons/lucide/compare/v${before}...v${after}" \
+            --jq '[.files[]?
+              | select(.filename | startswith("icons/") and endswith(".svg"))
+              | {
+                  status,
+                  name: (.filename | ltrimstr("icons/") | rtrimstr(".svg")),
+                  prev: (.previous_filename // "" | ltrimstr("icons/") | rtrimstr(".svg"))
+                }]')
+
+          added=$(jq     '[.[] | select(.status == "added")    | .name] | unique'                                 <<<"$files")
+          modified=$(jq  '[.[] | select(.status == "modified" or .status == "changed") | .name] | unique'          <<<"$files")
+          removed=$(jq   '[.[] | select(.status == "removed")  | .name] | unique'                                 <<<"$files")
+          renamed=$(jq   '[.[] | select(.status == "renamed")  | "\(.prev) → \(.name)"] | unique'                 <<<"$files")
+
+          render_section() {
+            local title="$1" data="$2"
+            local count; count=$(jq 'length' <<<"$data")
+            [ "$count" -eq 0 ] && return
+            printf "## %s (%s)\n\n" "$title" "$count"
+            jq -r '.[] | "- `\(.)`"' <<<"$data"
+            printf "\n"
+          }
+
+          {
+            printf "Synced from Lucide [\`v%s\`](https://github.com/lucide-icons/lucide/releases/tag/v%s) → [\`v%s\`](https://github.com/lucide-icons/lucide/releases/tag/v%s).\n\n" "$before" "$before" "$after" "$after"
+            render_section "Added"    "$added"
+            render_section "Modified" "$modified"
+            render_section "Removed"  "$removed"
+            render_section "Renamed"  "$renamed"
+            printf -- "---\n\n"
+            printf -- "- npm: [\`@createui-dev/icons@%s\`](https://www.npmjs.com/package/@createui-dev/icons/v/%s)\n" "$after" "$after"
+            printf -- "- CDN bundle: \`https://icon.createui.dev/%s/createui-icons.js\`\n" "$after"
+            printf -- "- SVG API: \`https://icon.createui.dev/%s/{icon}.svg\`\n" "$after"
+          } > /tmp/release-body.md
+
+          gh release create "v${after}" \
+            --title "v${after}" \
+            --notes-file /tmp/release-body.md

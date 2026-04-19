@@ -1,6 +1,6 @@
 # landing/
 
-Лендинг компонента на `icons.createui.dev/`. Astro / статика.
+Лендинг компонента на `icons.createui.dev/`. Astro / статика. Иконки для демок и каталога тянутся с API-домена `icon.createui.dev` через `<createui-icon>`.
 
 ## Файлы
 

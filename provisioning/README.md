@@ -1,6 +1,6 @@
 # provisioning/
 
-Настройка чистого VDS под `icons.createui.dev`. **Stage 6 — provisioning** (см. [`PLAN.md`](../PLAN.md)).
+Настройка чистого VDS под `icons.createui.dev` (лендинг) и `icon.createui.dev` (API). **Stage 6 — provisioning** (см. [`PLAN.md`](../PLAN.md)).
 
 ## Файлы
 
@@ -84,16 +84,18 @@ ssh root@$VDS 'passwd'
 
 ### 6. DNS
 
-A-запись:
+A-записи (оба на один IP):
 
 ```
-icons.createui.dev. → 85.239.48.234
+icons.createui.dev. → 85.239.48.234   # лендинг
+icon.createui.dev.  → 85.239.48.234   # API (SVG + бандл)
 ```
 
 Подождать пропагации:
 
 ```bash
 dig +short icons.createui.dev
+dig +short icon.createui.dev
 ```
 
 ## Что проверить после bootstrap
@@ -113,7 +115,7 @@ ssh deploy@$VDS '
 ## Что НЕ делает (это Stage 7)
 
 - НЕ запускает `icon-server` (нет бинарника)
-- НЕ применяет nginx-конфиг (`nginx/icons.conf`)
+- НЕ применяет nginx-конфиги (`nginx/icons.conf`, `nginx/icon.conf`)
 - НЕ выпускает SSL-сертификат
 - НЕ заливает иконки в `/var/icons/`
 

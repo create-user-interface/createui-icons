@@ -26,14 +26,15 @@ workflows/
 4. **Run `sync-lucide.sh sync`** — определяет новые версии, скачивает diff через `gh compare`, обновляет blobs/versions/manifest.
 5. **Detect new version** — если `latest` не изменился, дальнейшие шаги пропускаются (`if: steps.after.outputs.changed == 'true'`).
 6. **Push blobs/versions на VDS** — `--ignore-existing` (content-addressable, хэш = идентичность). `manifest.json` копируется последним: новая `latest` видна серверу только когда все её зависимости уже доехали.
-7. **Smoke-test SVG**: `curl https://icons.createui.dev/{ver}/user.svg` (стабильный target).
-8. **Setup Node 20** + npm cache.
+7. **Smoke-test SVG**: `curl https://icon.createui.dev/{ver}/user.svg` (стабильный target).
+8. **Setup Node 22** + npm cache + `registry-url: https://registry.npmjs.org` (нужен для npm Trusted Publishing).
 9. **Bump component**: `npm version {ver}` + `npm install --save-dev lucide@{ver}`.
 10. **Build bundle** (`npm run build` → `dist/bundle/createui-icons.js[.map]`).
 11. **Deploy bundle** в `/var/icons/bundles/{ver}/` через `rsync --mkpath` (директория версии создаётся автоматически).
-12. **Smoke-test bundle URL**: `curl https://icons.createui.dev/{ver}/createui-icons.js`.
-13. **`npm publish --access public`** (token из `NPM_TOKEN`).
+12. **Smoke-test bundle URL**: `curl https://icon.createui.dev/{ver}/createui-icons.js`.
+13. **`npm publish --access public --provenance`** через **Trusted Publishing (OIDC)**: npm CLI получает короткоживущий токен по id-token workflow permission, проверяет trust-конфигурацию в npm.com и публикует без долгоживущего `NPM_TOKEN`. `--provenance` добавляет SLSA-аттестацию со ссылкой на этот workflow run.
 14. **Commit + tag**: коммитим только `component/package.json` и `package-lock.json` (`manifest.json` живёт на VDS, не в репо). Тег `v{ver}`, `git push --follow-tags`.
+15. **GitHub Release**: `gh release create v{ver}` с body, собранным из Lucide compare API (`v{before}...v{after}`). Разделы Added / Modified / Removed / Renamed + ссылки на npm и CDN. Diff **суммарный** между последним опубликованным пакетом и новой версией — если Lucide выпустил несколько релизов за неделю, все изменения видны в одном релизе.
 
 ### Concurrency
 
@@ -46,9 +47,10 @@ workflows/
 | `SERVER_HOST` | IP / домен VDS |
 | `SERVER_USER` | Пользователь SSH (например, `deploy`) |
 | `SSH_PRIVATE_KEY` | Приватный ключ deploy-пользователя |
-| `NPM_TOKEN` | Токен для `npm publish` (npm Automation token) |
 
-`GITHUB_TOKEN` подставляется автоматически — нужен `gh` для compare API и `git push`. Для push требуется `permissions: contents: write` в job (уже выставлено).
+Долгоживущий `NPM_TOKEN` **не нужен** — публикация идёт через Trusted Publishing. Настраивается один раз в npm.com → Package → Settings → Trusted Publishers: привязка к `anthropics-forbes/createui-icons` + workflow `sync-lucide.yml` + environment пустой.
+
+`GITHUB_TOKEN` подставляется автоматически — нужен `gh` для compare API и `git push`. Для push требуется `permissions: contents: write` в job (уже выставлено). Для Trusted Publishing нужен `id-token: write` (тоже выставлен).
 
 ### TODO
 

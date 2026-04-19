@@ -18,7 +18,7 @@ server/
 3. Квантует `stroke` до ближайшего шага 0.25.
 4. Читает `$ICONS_ROOT/versions/{version}/{icon}.svg` (прозрачно следуя симлинку на блоб).
 5. Если `stroke != 2` — заменяет `stroke-width="2"` → `stroke-width="{квантованное}"`. При `stroke == 2` SVG отдаётся без модификаций (нет смысла сканировать файл).
-6. Возвращает SVG с заголовками `Cache-Control: public, max-age=604800, immutable` и `Access-Control-Allow-Origin: *`.
+6. Возвращает SVG с заголовками `Cache-Control: public, max-age=31536000, immutable` (URL версионирован и stroke квантован → контент зафиксирован навсегда) и `Access-Control-Allow-Origin: *`.
 
 ## Эндпоинты
 
@@ -38,6 +38,10 @@ server/
 ## Graceful shutdown
 
 Сервер ловит `SIGINT` и `SIGTERM` (systemd по умолчанию шлёт `SIGTERM`), вызывает `http.Server.Shutdown` с таймаутом 10 секунд — активные запросы дорабатываются, новые не принимаются. После 10 секунд — жёсткое завершение.
+
+## Логи
+
+Per-request access log **выключен**: на VDS с 14 GB диска и ожидаемой высокой нагрузкой он быстро забьёт журнал. В `log.Printf` остались только bootstrap/shutdown и read-errors (IO на `/var/icons/versions/...`) — диагностика сбоев, не аудит трафика.
 
 ## Сборка
 

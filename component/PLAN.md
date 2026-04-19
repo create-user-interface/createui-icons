@@ -7,7 +7,7 @@
 ## ✅ Сделано
 
 ### 1. Соответствие API сервера
-- [x] URL исправлен: `https://icons.createui.dev/{version}/{name}.svg?stroke={value}` (домен с `s`, версия в пути, stroke — query-параметр).
+- [x] URL исправлен: `https://icon.createui.dev/{version}/{name}.svg?stroke={value}` (API-домен `icon.`, версия в пути, stroke — query-параметр). Исторически был `icons.` — после разделения доменов (лендинг vs API) переехал на `icon.`.
 - [x] `stroke` — `number` (было: string union), дефолт `2` (было: `'1'`), диапазон `0.25–10`.
 - [x] Клиентское квантование `stroke` до шага `0.25` — для cache hit rate на Nginx (ключ кэша = `$uri$is_args$args`).
 - [x] Невалидный `stroke` (NaN/Infinity) → дефолт `2`.
@@ -91,7 +91,7 @@
 - [x] `build:bundle` → `dist/bundle/createui-icons.js` — IIFE, минифицированный, с sourcemap, target `es2020`. Текущий размер **2.4 kB**.
 - [x] IIFE всё inline (LUCIDE_VERSION, HOST_STYLES, `customElements.define`) — никаких рантайм-зависимостей, один `<script>` регистрирует `<createui-icon>`.
 - [x] Глобал `window.CreateUIIcons = { createIcon, LUCIDE_VERSION }` — для императивного использования и инспекции версии Lucide.
-- [x] Бандл уезжает в npm (попадает под `files: ["dist"]`) И будет выкладываться CI-скриптом на сервер `/var/icons/bundles/{version}/createui-icons.js`, чтобы URL был единым с SVG-доменом: `https://icons.createui.dev/{version}/createui-icons.js`.
+- [x] Бандл уезжает в npm (попадает под `files: ["dist"]`) И будет выкладываться CI-скриптом на сервер `/var/icons/bundles/{version}/createui-icons.js`, чтобы URL был единым с SVG-доменом: `https://icon.createui.dev/{version}/createui-icons.js`.
 - [x] Nginx location rule задокументирован для серверного этапа (см. ниже).
 
 **Nginx-заметка для server-этапа:**
@@ -106,7 +106,7 @@ location ~ ^/(?<ver>[^/]+)/createui-icons\.js(\.map)?$ {
 
 **CDN-usage:**
 ```html
-<script src="https://icons.createui.dev/1.8.0/createui-icons.js"></script>
+<script src="https://icon.createui.dev/1.8.0/createui-icons.js"></script>
 <createui-icon name="arrow-right" size="24" stroke="1.5"></createui-icon>
 ```
 

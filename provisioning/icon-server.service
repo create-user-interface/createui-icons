@@ -1,6 +1,6 @@
 [Unit]
 Description=createui-icons HTTP server (Go)
-Documentation=https://icons.createui.dev
+Documentation=https://icon.createui.dev
 After=network-online.target
 Wants=network-online.target
 
