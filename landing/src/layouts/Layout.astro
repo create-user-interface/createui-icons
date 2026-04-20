@@ -1,0 +1,134 @@
+---
+import '../styles/global.css';
+import type { Lang } from '../i18n';
+import { SITE } from '../i18n';
+import { CDN, VERSION } from '../utils/iconUrl';
+
+interface Props {
+  title: string;
+  description: string;
+  lang: Lang;
+}
+
+const { title, description, lang } = Astro.props;
+const URL_RU = `${SITE}/`;
+const URL_EN = `${SITE}/en/`;
+const canonical = lang === 'ru' ? URL_RU : URL_EN;
+const iconBundle = `${CDN}/${VERSION}/createui-icons.js`;
+const maskIconUrls = {
+  moonUrl: `url('${CDN}/${VERSION}/moon.svg?stroke=1.5')`,
+  sunUrl: `url('${CDN}/${VERSION}/sun.svg?stroke=1.5')`,
+  copyUrl: `url('${CDN}/${VERSION}/copy.svg?stroke=1.5')`,
+};
+---
+
+<html lang={lang} data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <title>{title}</title>
+
+    <link rel="canonical" href={canonical} />
+    <link rel="alternate" hreflang="ru" href={URL_RU} />
+    <link rel="alternate" hreflang="en" href={URL_EN} />
+    <link rel="alternate" hreflang="x-default" href={URL_RU} />
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/favicon.svg" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#FFFFFF" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0A0A0A" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={`${SITE}/og-image.png`} />
+    <meta property="og:site_name" content="CreateUI Icons" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={`${SITE}/og-image.png`} />
+
+    <script is:inline>
+      (function () {
+        var root = document.documentElement;
+        var storedTheme = null;
+        try { storedTheme = localStorage.getItem('theme'); } catch (e) {}
+        if (storedTheme === 'light' || storedTheme === 'dark') {
+          root.setAttribute('data-theme', storedTheme);
+        } else {
+          var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+          root.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+        }
+      })();
+    </script>
+
+    <link rel="preload" href="/fonts/JetBrainsMono-Regular.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/GolosText-Regular.woff2" as="font" type="font/woff2" crossorigin />
+
+    <link rel="preload" href={iconBundle} as="script" crossorigin />
+    <script is:inline src={iconBundle} defer></script>
+
+    <style is:global define:vars={maskIconUrls}>
+      :root {
+        --icon-moon-url: var(--moonUrl);
+        --icon-sun-url: var(--sunUrl);
+        --icon-copy-url: var(--copyUrl);
+      }
+    </style>
+
+    <style>
+      @font-face {
+        font-family: 'JetBrains Mono';
+        src: url('/fonts/JetBrainsMono-Regular.woff2') format('woff2');
+        font-weight: 400;
+        font-style: normal;
+        font-display: swap;
+      }
+
+      @font-face {
+        font-family: 'JetBrains Mono';
+        src: url('/fonts/JetBrainsMono-Bold.woff2') format('woff2');
+        font-weight: 700;
+        font-style: normal;
+        font-display: swap;
+      }
+
+      @font-face {
+        font-family: 'Golos Text';
+        src: url('/fonts/GolosText-Regular.woff2') format('woff2');
+        font-weight: 400;
+        font-style: normal;
+        font-display: swap;
+      }
+
+      @font-face {
+        font-family: 'Golos Text';
+        src: url('/fonts/GolosText-Medium.woff2') format('woff2');
+        font-weight: 500;
+        font-style: normal;
+        font-display: swap;
+      }
+
+      @font-face {
+        font-family: 'Golos Text';
+        src: url('/fonts/GolosText-Bold.woff2') format('woff2');
+        font-weight: 700;
+        font-style: normal;
+        font-display: swap;
+      }
+    </style>
+  </head>
+  <body>
+    <slot />
+
+    <script>
+      import { initTheme } from '../scripts/theme';
+      import { initI18n } from '../scripts/i18n';
+      initTheme();
+      initI18n();
+    </script>
+  </body>
+</html>

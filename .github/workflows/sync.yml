@@ -12,8 +12,10 @@ name: sync-lucide
 #
 # Если новых версий нет — шаги 3+ пропускаются.
 #
-# Лендинг (Stage 4) пока не подключён — добавить шаг сборки и rsync `landing/dist/`
-# в `/var/www/icons-landing/` после реализации.
+# Лендинг: собирается после bump-а component-версии и деплоится в
+# /var/www/icons-landing/ — landing/scripts/sync-version.mjs пишет
+# component/package.json.version в src/generated/version.ts, поэтому CDN-URL
+# в вёрстке всегда совпадает с только что опубликованным bundle.
 
 on:
   schedule:
@@ -36,8 +38,8 @@ env:
   REMOTE_BUNDLES: /var/icons/bundles
   # API: /health, /{ver}/*.svg, /{ver}/createui-icons.js
   DOMAIN_API: icon.createui.dev
-  # Лендинг (сейчас не используется в этом workflow — оставлено для будущих smoke-тестов лендинга)
   DOMAIN_LANDING: icons.createui.dev
+  REMOTE_LANDING: /var/www/icons-landing
 
 jobs:
   sync-and-deploy:
@@ -148,7 +150,9 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: component/package-lock.json
+          cache-dependency-path: |
+            component/package-lock.json
+            landing/package-lock.json
           registry-url: 'https://registry.npmjs.org'
 
       - name: Bump component version + lucide dep
@@ -187,10 +191,48 @@ jobs:
       # id-token workflow permission, проверяет trust-конфигурацию на npm.com
       # (registry-url + repo + workflow совпадают) и публикует без NPM_TOKEN.
       # --provenance добавляет SLSA-аттестацию со ссылкой на этот workflow run.
+      #
+      # Публикуется ДО деплоя лендинга: если publish падает, лендинг остаётся
+      # на прежней версии и не ссылается в примерах на пакет, которого нет в npm.
       - name: Publish to npm
         if: steps.after.outputs.changed == 'true'
         working-directory: component
         run: npm publish --access public --provenance
+
+      # ─── Landing build + deploy ──────────────────────────────────────────
+      # prebuild подхватывает только что bumped component/package.json.version
+      # в src/generated/version.ts, поэтому URL-ы в HTML ссылаются на v$v,
+      # который уже живёт на CDN (пункты «Deploy CDN bundle» + «Smoke-test bundle»)
+      # и свеже-опубликован на npm (пункт «Publish to npm»).
+      - name: Install landing deps
+        if: steps.after.outputs.changed == 'true'
+        working-directory: landing
+        run: npm ci
+
+      - name: Build landing
+        if: steps.after.outputs.changed == 'true'
+        working-directory: landing
+        run: npm run build
+
+      - name: Deploy landing to VDS
+        if: steps.after.outputs.changed == 'true'
+        run: |
+          rsync -az --delete \
+            landing/dist/ \
+            "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:$REMOTE_LANDING/"
+
+      - name: Smoke-test landing
+        if: steps.after.outputs.changed == 'true'
+        run: |
+          curl -fsS "https://$DOMAIN_LANDING/" > /dev/null
+          curl -fsS "https://$DOMAIN_LANDING/en/" > /dev/null
+          # Проверяем, что в отданном HTML проставлена свежая версия,
+          # а не прошлая из кэша nginx / браузера.
+          curl -fsS "https://$DOMAIN_LANDING/" | grep -q "/${{ steps.after.outputs.version }}/" || {
+            echo "Landing HTML doesn't reference v${{ steps.after.outputs.version }}"
+            exit 1
+          }
+          echo "Landing OK (v${{ steps.after.outputs.version }})"
 
       # ─── Commit + tag ────────────────────────────────────────────────────
       # manifest.json НЕ коммитится — это server state (живёт на VDS).
@@ -201,7 +243,7 @@ jobs:
           v="${{ steps.after.outputs.version }}"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add component/package.json component/package-lock.json
+          git add component/package.json component/package-lock.json landing/package-lock.json
           git commit -m "chore(sync): bump to lucide $v"
           git tag "v$v"
           git push --follow-tags

@@ -1,0 +1,12 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import LandingShell from '../../components/LandingShell.astro';
+import { useT } from '../../i18n';
+
+const lang = 'en' as const;
+const t = useT(lang);
+---
+
+<Layout lang={lang} title={t.meta.title} description={t.meta.description}>
+  <LandingShell lang={lang} />
+</Layout>

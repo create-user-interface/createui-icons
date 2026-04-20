@@ -1,0 +1,352 @@
+---
+import styles from '../styles/Explorer.module.css';
+import { ICONS as icons } from '../generated/icons';
+import type { Lang } from '../i18n';
+import { useT } from '../i18n';
+import { nbsp } from '../utils/nbsp';
+import { CDN, VERSION, iconUrl } from '../utils/iconUrl';
+
+interface Props { lang?: Lang }
+const { lang = 'ru' } = Astro.props;
+const t = useT(lang);
+
+const WEIGHTS = ['0.5', '0.75', '1', '1.25', '1.5', '1.75', '2', '2.25', '2.5', '2.75', '3'];
+---
+
+<section class={styles.section}>
+  <h2 class={styles.title} data-i18n="explorer.title">{nbsp(t.explorer.title)}</h2>
+
+  <div class={styles.searchWrapper}>
+    <div class={styles.searchInputWrap}>
+      <input
+        id="explorer-search"
+        class={styles.searchInput}
+        type="text"
+        placeholder={t.explorer.searchPlaceholder}
+        data-i18n-attr="placeholder:explorer.searchPlaceholder"
+        autocomplete="off"
+        spellcheck="false"
+      />
+      <button
+        id="explorer-search-clear"
+        class={styles.searchClear}
+        type="button"
+        aria-label={t.explorer.clearLabel}
+        data-i18n-attr="aria-label:explorer.clearLabel"
+        hidden
+      >✕</button>
+    </div>
+    <div id="explorer-search-result" class={styles.searchResult}></div>
+  </div>
+
+  <div class={styles.grid}>
+    {icons.map((name: string) => (
+      <div
+        class={styles.iconCell}
+        data-icon={name}
+        role="button"
+        tabindex="0"
+        aria-label={name}
+      >
+        <div
+          class={styles.iconDisplay}
+          style={`-webkit-mask-image: url('${iconUrl(name, '1.5')}'); mask-image: url('${iconUrl(name, '1.5')}');`}
+        />
+        <span class={styles.iconName}>{name}</span>
+      </div>
+    ))}
+  </div>
+
+  <a
+    class={styles.browseLink}
+    href="https://lucide.dev/icons"
+    target="_blank"
+    rel="noopener noreferrer"
+    data-i18n="explorer.browseAll"
+  >
+    {nbsp(t.explorer.browseAll)}
+  </a>
+</section>
+
+<div id="explorer-popup" class={styles.popup}>
+  <div class={styles.popupCard} id="explorer-popup-card">
+    <button id="explorer-popup-close" class={styles.popupClose} aria-label={t.explorer.closeLabel} data-i18n-attr="aria-label:explorer.closeLabel">✕</button>
+
+    <span id="explorer-popup-name" class={styles.popupIconName}></span>
+
+    <div id="explorer-popup-preview-wrap" class={styles.popupPreviewWrap}>
+      <div id="explorer-popup-preview" class={styles.popupPreview}></div>
+      <span class="explorer-search-spinner" aria-hidden="true"></span>
+    </div>
+
+    <div class={styles.popupWeights}>
+      {WEIGHTS.map((w: string) => (
+        <button class={styles.weightChip} data-weight={w}>{w}</button>
+      ))}
+    </div>
+
+    <div id="explorer-popup-url" class={styles.popupUrl}></div>
+
+    <button id="explorer-popup-copy" class={styles.popupCopyBtn}>
+      <span data-copy-label data-i18n="explorer.copyUrl">{nbsp(t.explorer.copyUrl)}</span>
+    </button>
+  </div>
+</div>
+
+<script is:inline define:vars={{ CDN, VERSION, WEIGHTS }}>
+  function getDict() {
+    return (window.__i18n && window.__i18n.dict) || null;
+  }
+  function copyUrlLabel() { const d = getDict(); return d ? d.explorer.copyUrl : 'Copy URL'; }
+  function copiedLabelText() { const d = getDict(); return d ? d.explorer.copiedUrl : '✓ Copied!'; }
+  function notFoundLabelText() { const d = getDict(); return d ? d.explorer.notFound : 'Not found —'; }
+  function browseLabelText() { const d = getDict(); return d ? d.explorer.browseLucide : 'browse Lucide'; }
+
+  let currentIcon = '';
+  let currentWeight = '1.5';
+
+  const popup = document.getElementById('explorer-popup');
+  const popupName = document.getElementById('explorer-popup-name');
+  const popupPreviewWrap = document.getElementById('explorer-popup-preview-wrap');
+  const popupPreview = document.getElementById('explorer-popup-preview');
+  const popupUrl = document.getElementById('explorer-popup-url');
+  const popupCopy = document.getElementById('explorer-popup-copy');
+  const popupClose = document.getElementById('explorer-popup-close');
+
+  function buildUrl(name, weight) {
+    return `${CDN}/${VERSION}/${name}.svg?stroke=${weight}`;
+  }
+
+  const previewCache = new Set();
+  let previewToken = 0;
+  const MIN_LOADER_MS = 280;
+
+  document.querySelectorAll('[data-icon]').forEach((cell) => {
+    previewCache.add(buildUrl(cell.dataset.icon, '1.5'));
+  });
+
+  async function preload(url) {
+    if (previewCache.has(url)) return;
+    const fetchImg = new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => { previewCache.add(url); resolve(); };
+      img.onerror = reject;
+      img.src = url;
+    });
+    const minDelay = new Promise((resolve) => setTimeout(resolve, MIN_LOADER_MS));
+    await Promise.all([fetchImg, minDelay]);
+  }
+
+  function setPreviewState(state) {
+    if (popupPreviewWrap) popupPreviewWrap.dataset.state = state;
+  }
+
+  function applyPreviewMask(url) {
+    if (!popupPreview) return;
+    popupPreview.style.setProperty('-webkit-mask-image', `url('${url}')`);
+    popupPreview.style.setProperty('mask-image', `url('${url}')`);
+  }
+
+  function updatePopup() {
+    const url = buildUrl(currentIcon, currentWeight);
+
+    if (popupUrl) popupUrl.textContent = url;
+    document.querySelectorAll('[data-weight]').forEach((chip) => {
+      chip.dataset.active = chip.dataset.weight === currentWeight ? 'true' : 'false';
+    });
+
+    if (!popupPreview) return;
+
+    const token = ++previewToken;
+    if (previewCache.has(url)) {
+      applyPreviewMask(url);
+      setPreviewState('ready');
+      return;
+    }
+
+    setPreviewState('loading');
+    preload(url).then(() => {
+      if (token !== previewToken) return;
+      applyPreviewMask(url);
+      setPreviewState('ready');
+    }).catch(() => {
+      if (token !== previewToken) return;
+      setPreviewState('error');
+    });
+  }
+
+  function openPopup(name) {
+    currentIcon = name;
+    currentWeight = '1.5';
+
+    if (popupName) popupName.textContent = name;
+    if (popupPreview) {
+      popupPreview.style.removeProperty('-webkit-mask-image');
+      popupPreview.style.removeProperty('mask-image');
+    }
+    updatePopup();
+    if (popup) popup.dataset.visible = 'true';
+  }
+
+  function closePopup() {
+    if (popup) delete popup.dataset.visible;
+  }
+
+  document.querySelectorAll('[data-icon]').forEach((cell) => {
+    cell.addEventListener('click', () => {
+      openPopup(cell.dataset.icon);
+    });
+    cell.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        openPopup(cell.dataset.icon);
+      }
+    });
+  });
+
+  document.querySelectorAll('[data-weight]').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      currentWeight = chip.dataset.weight;
+      updatePopup();
+    });
+  });
+
+  if (popupClose) {
+    popupClose.addEventListener('click', closePopup);
+  }
+
+  if (popup) {
+    popup.addEventListener('click', (e) => {
+      if (e.target === popup) closePopup();
+    });
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && popup && popup.dataset.visible === 'true') {
+      closePopup();
+    }
+  });
+
+  if (popupCopy) {
+    popupCopy.addEventListener('click', () => {
+      const url = buildUrl(currentIcon, currentWeight);
+      navigator.clipboard.writeText(url).then(() => {
+        const labelEl = popupCopy.querySelector('[data-copy-label]');
+        if (!labelEl) return;
+        labelEl.textContent = copiedLabelText();
+        setTimeout(() => {
+          labelEl.textContent = copyUrlLabel();
+        }, 2000);
+      });
+    });
+  }
+
+  const searchInput = document.getElementById('explorer-search');
+  const searchResult = document.getElementById('explorer-search-result');
+  const searchClear = document.getElementById('explorer-search-clear');
+
+  let searchTimer = null;
+  let searchToken = 0;
+  let searchController = null;
+
+  function renderSearchHit(value, url) {
+    return `
+      <div class="${'_search-hit'}" data-search-icon="${value}" style="display:inline-flex;flex-direction:column;align-items:center;gap:0.5rem;cursor:pointer;">
+        <div style="
+          width:48px;height:48px;
+          -webkit-mask-image:url('${url}');mask-image:url('${url}');
+          -webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;
+          -webkit-mask-position:center;mask-position:center;
+          -webkit-mask-size:contain;mask-size:contain;
+          background-color:var(--color-icon);
+        "></div>
+        <span style="font-family:var(--font-mono);font-size:var(--text-xs);color:var(--color-text-muted);">${value}</span>
+      </div>
+    `;
+  }
+
+  function setSearchState(state) {
+    if (searchResult) searchResult.dataset.state = state;
+  }
+
+  function syncClearButton() {
+    if (!searchClear || !searchInput) return;
+    if (searchInput.value.length > 0) {
+      searchClear.removeAttribute('hidden');
+    } else {
+      searchClear.setAttribute('hidden', '');
+    }
+  }
+
+  if (searchClear && searchInput) {
+    searchClear.addEventListener('click', () => {
+      searchInput.value = '';
+      searchInput.focus();
+      searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+  }
+
+  window.addEventListener('langchange', () => {
+    if (searchResult && searchResult.dataset.state === 'not-found') {
+      searchResult.innerHTML = `
+        <span style="font-family:var(--font-mono);font-size:var(--text-xs);color:var(--color-text-muted);">
+          ${notFoundLabelText()}
+          <a href="https://lucide.dev/icons" target="_blank" rel="noopener noreferrer"
+            style="color:var(--color-text);text-decoration:underline;">${browseLabelText()}</a>
+        </span>
+      `;
+    }
+  });
+
+  if (searchInput && searchResult) {
+    searchInput.addEventListener('input', () => {
+      clearTimeout(searchTimer);
+      syncClearButton();
+      const value = searchInput.value.trim().toLowerCase().replace(/\s+/g, '-');
+
+      if (!value) {
+        searchResult.style.display = 'none';
+        searchResult.innerHTML = '';
+        setSearchState('idle');
+        return;
+      }
+
+      searchResult.style.display = 'block';
+      setSearchState('loading');
+      searchResult.innerHTML = '<span class="explorer-search-spinner" aria-label="loading"></span>';
+
+      if (searchController) searchController.abort();
+      searchController = new AbortController();
+      const controller = searchController;
+      const token = ++searchToken;
+      searchTimer = setTimeout(async () => {
+        const url = buildUrl(value, '1.5');
+        try {
+          const res = await fetch(url, { method: 'HEAD', signal: controller.signal });
+          if (token !== searchToken) return;
+          if (!res.ok) throw new Error('not found');
+
+          await preload(url);
+          if (token !== searchToken) return;
+
+          setSearchState('found');
+          searchResult.innerHTML = renderSearchHit(value, url);
+          searchResult.querySelector('[data-search-icon]')?.addEventListener('click', () => {
+            openPopup(value);
+          });
+        } catch (err) {
+          if (err && err.name === 'AbortError') return;
+          if (token !== searchToken) return;
+          setSearchState('not-found');
+          searchResult.innerHTML = `
+            <span style="font-family:var(--font-mono);font-size:var(--text-xs);color:var(--color-text-muted);">
+              ${notFoundLabelText()}
+              <a href="https://lucide.dev/icons" target="_blank" rel="noopener noreferrer"
+                style="color:var(--color-text);text-decoration:underline;">${browseLabelText()}</a>
+            </span>
+          `;
+        }
+      }, 400);
+    });
+  }
+</script>

@@ -1,0 +1,32 @@
+---
+import styles from '../styles/Problems.module.css';
+import type { Lang } from '../i18n';
+import { useT } from '../i18n';
+import { nbsp } from '../utils/nbsp';
+import { iconUrl } from '../utils/iconUrl';
+
+interface Props { lang?: Lang }
+const { lang = 'ru' } = Astro.props;
+const t = useT(lang);
+
+const ICONS = [
+  iconUrl('package-minus', 1.5),
+  iconUrl('code-xml', 1.5),
+  iconUrl('sliders-horizontal', 1.5),
+];
+---
+
+<section class={styles.section}>
+  <div class={styles.container}>
+    <h2 class={styles.title} data-i18n="problems.title">{nbsp(t.problems.title)}</h2>
+    <div class={styles.cards}>
+      {t.problems.cards.map((card, i) => (
+        <div class={styles.card}>
+          <div class={styles.cardIcon} style={`mask-image: url('${ICONS[i]}'); -webkit-mask-image: url('${ICONS[i]}');`} />
+          <h3 class={styles.cardTitle} data-i18n={`problems.cards.${i}.title`}>{nbsp(card.title)}</h3>
+          <p class={styles.cardText} data-i18n={`problems.cards.${i}.text`}>{nbsp(card.text)}</p>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>

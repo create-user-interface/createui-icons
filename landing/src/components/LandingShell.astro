@@ -1,0 +1,30 @@
+---
+import type { Lang } from '../i18n';
+import Header from './Header.astro';
+import Hero from './Hero.astro';
+import Problems from './Problems.astro';
+import HowItWorks from './HowItWorks.astro';
+import Integration from './Integration.astro';
+import Explorer from './Explorer.astro';
+import Performance from './Performance.astro';
+import Support from './Support.astro';
+import Footer from './Footer.astro';
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+---
+
+<Header lang={lang} />
+<main>
+  <Hero lang={lang} />
+  <Problems lang={lang} />
+  <HowItWorks lang={lang} />
+  <Integration lang={lang} />
+  <Explorer lang={lang} />
+  <Performance lang={lang} />
+  <Support lang={lang} />
+</main>
+<Footer lang={lang} />

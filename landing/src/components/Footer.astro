@@ -1,0 +1,25 @@
+---
+import styles from '../styles/Footer.module.css';
+import type { Lang } from '../i18n';
+import { useT } from '../i18n';
+import { nbsp } from '../utils/nbsp';
+
+interface Props { lang?: Lang }
+const { lang = 'ru' } = Astro.props;
+const t = useT(lang);
+
+const TELEGRAM_URL = 'https://t.me/createui';
+const GITHUB_URL = 'https://github.com/create-user-interface/createui-icons';
+---
+
+<footer class={styles.footer}>
+  <div class={styles.container}>
+    <p class={styles.attribution}>
+      <span data-i18n="footer.attributionBefore">{nbsp(t.footer.attributionBefore)}</span> <a class={styles.link} href="https://lucide.dev" target="_blank" rel="noopener">Lucide</a><span data-i18n="footer.attributionAfter">{nbsp(t.footer.attributionAfter)}</span>
+    </p>
+    <div class={styles.links}>
+      <a class={styles.link} href={TELEGRAM_URL} target="_blank" rel="noopener">Telegram</a>
+      <a class={styles.link} href={GITHUB_URL} target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </div>
+</footer>

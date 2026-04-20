@@ -1,0 +1,113 @@
+---
+import styles from '../styles/Integration.module.css';
+import { codeTabs } from '../data/codeExamples';
+import type { Lang } from '../i18n';
+import { useT } from '../i18n';
+import { nbsp } from '../utils/nbsp';
+
+interface Props { lang?: Lang }
+const { lang = 'ru' } = Astro.props;
+const t = useT(lang);
+---
+
+<section class={styles.section}>
+  <div class={styles.container}>
+    <h2 class={styles.title} data-i18n="integration.title">{nbsp(t.integration.title)}</h2>
+    <p class={styles.subtitle} data-i18n="integration.subtitle">{nbsp(t.integration.subtitle)}</p>
+
+    <div class={styles.tabsRow}>
+      <div class={styles.tabs} id="integration-tabs">
+        {codeTabs.map((tab, i) => (
+          <button
+            class={styles.tab}
+            data-tab={tab.id}
+            data-active={i === 0 ? 'true' : 'false'}
+            type="button"
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+      <button class={styles.copyBtn} id="integration-copy-btn" type="button">
+        <span class={styles.copyIcon} aria-hidden="true"></span>
+        <span class={styles.copyLabel} data-copy-label data-i18n="integration.copy">{nbsp(t.integration.copy)}</span>
+      </button>
+    </div>
+
+    <div class={styles.codeBlock}>
+      {codeTabs.map((tab, i) => (
+        <div
+          class={styles.codeContent}
+          data-tab-content={tab.id}
+          data-active={i === 0 ? 'true' : 'false'}
+        >
+          <pre>{tab.code}</pre>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>
+
+<script is:inline>
+  const tabButtons = document.querySelectorAll('[data-tab]');
+  const tabContents = document.querySelectorAll('[data-tab-content]');
+  const copyBtn = document.getElementById('integration-copy-btn');
+
+  tabButtons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const target = btn.dataset.tab;
+
+      tabButtons.forEach((b) => b.setAttribute('data-active', 'false'));
+      tabContents.forEach((c) => c.setAttribute('data-active', 'false'));
+
+      btn.setAttribute('data-active', 'true');
+      const content = document.querySelector(`[data-tab-content="${target}"]`);
+      if (content) content.setAttribute('data-active', 'true');
+    });
+  });
+
+  let copyResetTimer = null;
+  let copyShowingCopied = false;
+
+  function getDict() {
+    return (window.__i18n && window.__i18n.dict) || null;
+  }
+
+  function resetCopyLabel() {
+    const labelEl = copyBtn && copyBtn.querySelector('[data-copy-label]');
+    const dict = getDict();
+    if (!labelEl || !dict) return;
+    labelEl.textContent = dict.integration.copy;
+    copyShowingCopied = false;
+  }
+
+  if (copyBtn) {
+    copyBtn.addEventListener('click', () => {
+      const activeContent = document.querySelector('[data-tab-content][data-active="true"]');
+      if (!activeContent) return;
+
+      const pre = activeContent.querySelector('pre');
+      if (!pre) return;
+
+      const text = pre.textContent ?? '';
+
+      navigator.clipboard.writeText(text).then(() => {
+        const labelEl = copyBtn.querySelector('[data-copy-label]');
+        const dict = getDict();
+        if (!labelEl || !dict) return;
+        labelEl.textContent = dict.integration.copied;
+        copyShowingCopied = true;
+        clearTimeout(copyResetTimer);
+        copyResetTimer = setTimeout(resetCopyLabel, 2000);
+      });
+    });
+  }
+
+  window.addEventListener('langchange', () => {
+    if (copyShowingCopied) {
+      const labelEl = copyBtn && copyBtn.querySelector('[data-copy-label]');
+      const dict = getDict();
+      if (labelEl && dict) labelEl.textContent = dict.integration.copied;
+    }
+  });
+</script>

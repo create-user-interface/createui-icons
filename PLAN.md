@@ -12,7 +12,7 @@
 | `server/` (Go) | ✅ Готово |
 | `scripts/sync-lucide.sh` | ✅ Готово |
 | `nginx/icons.conf` + `nginx/icon.conf` | ✅ Готово (два домена: лендинг + API) |
-| `landing/` (Astro) | ⏳ Только README |
+| `landing/` (Astro) | ✅ Готово (Astro 5 + i18n + CI деплой в sync.yml) |
 | `.github/workflows/sync.yml` | ✅ Готово |
 | VDS (provisioning) | ✅ Настроен (`85.239.48.234`) |
 | Первичный деплой | ✅ Готово — https://icons.createui.dev (лендинг) + https://icon.createui.dev (API) |

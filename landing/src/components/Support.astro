@@ -1,0 +1,234 @@
+---
+import styles from '../styles/Support.module.css';
+import type { Lang } from '../i18n';
+import { useT } from '../i18n';
+import { nbsp } from '../utils/nbsp';
+import { getSyncStatus, relativeTime } from '../utils/syncStatus';
+
+interface Props { lang?: Lang }
+const { lang = 'ru' } = Astro.props;
+const t = useT(lang);
+
+// const BMC_URL = 'https://buymeacoffee.com/createui'; // temporarily disabled
+
+interface WalletNetwork {
+  label: string | null;
+  address: string;
+}
+interface Wallet {
+  name: string;
+  ticker: string;
+  networks: WalletNetwork[];
+}
+
+const WALLETS: Wallet[] = [
+  {
+    name: 'Bitcoin',
+    ticker: 'BTC',
+    networks: [
+      { label: null, address: 'bc1qvu4k36lh0a2uc23v9cga58gw4jmz352a0ldt9e' },
+    ],
+  },
+  {
+    name: 'Ethereum',
+    ticker: 'ETH',
+    networks: [
+      { label: null, address: '0x2399cCc6C09Bddc80dE9e96e532b4C45a7D094AA' },
+    ],
+  },
+  {
+    name: 'TON',
+    ticker: 'TON',
+    networks: [
+      { label: null, address: 'UQB3aqa2ve-8RK0C9iyym1Yie1vgYR2eU7faV34D1iGXsrt-' },
+    ],
+  },
+  {
+    name: 'USDT',
+    ticker: 'USDT',
+    networks: [
+      { label: 'TRC-20 (Tron)',     address: 'TBXC3eNK8ZbmyvmUztBZGPeE5z8WgAD27i' },
+      { label: 'ERC-20 (Ethereum)', address: '0x2399cCc6C09Bddc80dE9e96e532b4C45a7D094AA' },
+      { label: 'BEP-20 (BSC)',      address: '0x2399cCc6C09Bddc80dE9e96e532b4C45a7D094AA' },
+    ],
+  },
+];
+
+const sync = await getSyncStatus();
+const rels = {
+  last: relativeTime(sync.lastSync),
+  next: relativeTime(sync.nextSync),
+};
+const lastSyncText = lang === 'ru' ? rels.last.ru : rels.last.en;
+const nextSyncText = lang === 'ru' ? rels.next.ru : rels.next.en;
+---
+
+<section class={styles.section}>
+  <h2 class={styles.title} data-i18n="support.title">{nbsp(t.support.title)}</h2>
+  {/*
+  <p class={styles.description} data-i18n="support.description">{nbsp(t.support.description)}</p>
+
+  <div class={styles.progressWrapper}>
+    <div class={styles.progressLabel} data-i18n="support.progressLabel" data-i18n-fmt={progressVarsJson}>
+      {nbsp(progressLabelText)}
+    </div>
+    <div class={styles.progressBar}>
+      <div class={styles.progressFill} style={`width: ${(FUNDED / GOAL) * 100}%`} />
+    </div>
+  </div>
+
+  <p class={styles.recommended} data-i18n="support.recommended">{nbsp(t.support.recommended)}</p>
+  */}
+
+  <div class={styles.caffeinePitch}>
+    <p data-i18n="support.caffeinePitch.line1">{nbsp(t.support.caffeinePitch.line1)}</p>
+    <p data-i18n="support.caffeinePitch.line2">{nbsp(t.support.caffeinePitch.line2)}</p>
+  </div>
+
+  <div class={styles.buttons}>
+    {/*
+    <a class={styles.bmcButton} href={BMC_URL} target="_blank" rel="noopener">
+      <createui-icon class={styles.btnIcon} name="coffee" size="18" stroke="1.5" aria-hidden="true"></createui-icon>
+      <span data-i18n="support.bmcButton">{t.support.bmcButton}</span>
+    </a>
+    */}
+    <button class={styles.cryptoButton} id="crypto-btn" type="button">
+      <createui-icon class={styles.btnIcon} name="bitcoin" size="18" stroke="1.5" aria-hidden="true"></createui-icon>
+      <span data-i18n="support.cryptoButton">{t.support.cryptoButton}</span>
+    </button>
+  </div>
+
+  <div class={styles.syncPanel}>
+    <div class={styles.syncHeader}>
+      <span class={styles.badgeDot}></span>
+      <span class={styles.syncHeaderLabel} data-i18n="support.sync.header">{nbsp(t.support.sync.header)}</span>
+    </div>
+    <dl class={styles.syncGrid}>
+      <div class={styles.syncRow}>
+        <dt class={styles.syncKey} data-i18n="support.sync.cdnVersion">{nbsp(t.support.sync.cdnVersion)}</dt>
+        <dd class={styles.syncVal}>
+          <span class={styles.versionTag}>v{sync.cdnVersion}</span>
+          {sync.cdnStale && (
+            <span class={styles.staleTag} title="CDN is behind npm latest" data-i18n="support.sync.cdnBehind">
+              {nbsp(t.support.sync.cdnBehind)}
+            </span>
+          )}
+        </dd>
+      </div>
+      <div class={styles.syncRow}>
+        <dt class={styles.syncKey} data-i18n="support.sync.npmLatest">{nbsp(t.support.sync.npmLatest)}</dt>
+        <dd class={styles.syncVal}>
+          <span class={styles.versionTag}>v{sync.npmLatest}</span>
+        </dd>
+      </div>
+      <div class={styles.syncRow}>
+        <dt class={styles.syncKey} data-i18n="support.sync.lastSync">{nbsp(t.support.sync.lastSync)}</dt>
+        <dd class={styles.syncVal} data-i18n-text-ru={rels.last.ru} data-i18n-text-en={rels.last.en}>{nbsp(lastSyncText)}</dd>
+      </div>
+      <div class={styles.syncRow}>
+        <dt class={styles.syncKey} data-i18n="support.sync.nextSync">{nbsp(t.support.sync.nextSync)}</dt>
+        <dd class={styles.syncVal} data-i18n-text-ru={rels.next.ru} data-i18n-text-en={rels.next.en}>{nbsp(nextSyncText)}</dd>
+      </div>
+    </dl>
+    <div class={styles.syncFootnote} data-i18n="support.sync.footnote">{nbsp(t.support.sync.footnote)}</div>
+  </div>
+</section>
+
+<div id="crypto-modal" class={styles.cryptoModal} aria-hidden="true">
+  <div class={styles.cryptoModalCard} role="dialog" aria-modal="true" aria-labelledby="crypto-modal-title">
+    <div class={styles.cryptoModalHeader}>
+      <h3 id="crypto-modal-title" class={styles.cryptoModalTitle} data-i18n="support.crypto.title">
+        {nbsp(t.support.crypto.title)}
+      </h3>
+      <button id="crypto-modal-close" class={styles.cryptoModalClose} type="button" aria-label="Close">✕</button>
+    </div>
+
+    <div class={styles.cryptoModalBody}>
+      {WALLETS.map((wallet) => (
+        <section class={styles.walletGroup}>
+          <header class={styles.walletGroupHeader}>
+            <span class={styles.walletTicker}>{wallet.ticker}</span>
+            <span class={styles.walletName}>{wallet.name}</span>
+          </header>
+          <div class={styles.walletList}>
+            {wallet.networks.map((net) => (
+              <div class={styles.walletRow}>
+                {net.label && (
+                  <div class={styles.walletLabel}>{net.label}</div>
+                )}
+                <div class={styles.walletAddressRow}>
+                  <code class={styles.walletAddress} title={net.address}>{net.address}</code>
+                  <button
+                    class={styles.walletCopyBtn}
+                    type="button"
+                    data-copy={net.address}
+                    aria-label="Copy address"
+                  >
+                    <createui-icon class={styles.walletCopyIcon} name="copy" size="14" stroke="1.5" aria-hidden="true"></createui-icon>
+                    <span class={styles.walletCopyLabel} data-copy-label data-i18n="support.crypto.copy">{t.support.crypto.copy}</span>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+  </div>
+</div>
+
+<script is:inline>
+  function getCryptoDict() {
+    return (window.__i18n && window.__i18n.dict && window.__i18n.dict.support.crypto) || null;
+  }
+  function copyLabelText() { const d = getCryptoDict(); return d ? d.copy : 'Copy'; }
+  function copiedLabelText() { const d = getCryptoDict(); return d ? d.copied : '✓ Copied'; }
+
+  const cryptoBtn = document.getElementById('crypto-btn');
+  const cryptoModal = document.getElementById('crypto-modal');
+  const cryptoClose = document.getElementById('crypto-modal-close');
+
+  function openCryptoModal() {
+    if (!cryptoModal) return;
+    cryptoModal.dataset.visible = 'true';
+    cryptoModal.removeAttribute('aria-hidden');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeCryptoModal() {
+    if (!cryptoModal) return;
+    delete cryptoModal.dataset.visible;
+    cryptoModal.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+  }
+
+  if (cryptoBtn) cryptoBtn.addEventListener('click', openCryptoModal);
+  if (cryptoClose) cryptoClose.addEventListener('click', closeCryptoModal);
+
+  if (cryptoModal) {
+    cryptoModal.addEventListener('click', (e) => {
+      if (e.target === cryptoModal) closeCryptoModal();
+    });
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && cryptoModal && cryptoModal.dataset.visible === 'true') {
+      closeCryptoModal();
+    }
+  });
+
+  document.querySelectorAll('[data-copy]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const address = btn.getAttribute('data-copy') || '';
+      try { await navigator.clipboard.writeText(address); } catch { return; }
+      const label = btn.querySelector('[data-copy-label]');
+      if (!label) return;
+      label.textContent = copiedLabelText();
+      btn.setAttribute('data-copied', 'true');
+      setTimeout(() => {
+        label.textContent = copyLabelText();
+        btn.removeAttribute('data-copied');
+      }, 1800);
+    });
+  });
+</script>

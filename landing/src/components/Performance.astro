@@ -1,0 +1,36 @@
+---
+import styles from '../styles/Performance.module.css';
+import type { Lang } from '../i18n';
+import { useT } from '../i18n';
+import { nbsp } from '../utils/nbsp';
+
+interface Props { lang?: Lang }
+const { lang = 'ru' } = Astro.props;
+const t = useT(lang);
+---
+
+<section class={styles.section}>
+  <div class={styles.container}>
+    <h2 class={styles.title} data-i18n="performance.title">{nbsp(t.performance.title)}</h2>
+    <div class={styles.tableWrapper}>
+      <table class={styles.table}>
+        <thead>
+          <tr>
+            <th data-i18n="performance.metric">{nbsp(t.performance.metric)}</th>
+            <th>lucide-react</th>
+            <th>CreateUI CDN</th>
+          </tr>
+        </thead>
+        <tbody>
+          {t.performance.rows.map((row, i) => (
+            <tr>
+              <td data-i18n={`performance.rows.${i}.metric`}>{nbsp(row.metric)}</td>
+              <td class={styles.dim} data-i18n={`performance.rows.${i}.lucide`}>{row.lucide}</td>
+              <td class={styles.highlight} data-i18n={`performance.rows.${i}.createui`}>{row.createui}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>

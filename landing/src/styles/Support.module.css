@@ -1,0 +1,378 @@
+.section {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 6rem 2rem;
+  text-align: center;
+  border-top: 1px solid var(--color-border-strong);
+}
+.title {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-3xl);
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  letter-spacing: -0.02em;
+}
+.description {
+  font-size: var(--font-size-lg);
+  color: var(--color-text-secondary);
+  max-width: 640px;
+  margin: 0 auto 3rem;
+  line-height: 1.7;
+}
+.progressWrapper {
+  max-width: 400px;
+  margin: 0 auto 1.5rem;
+}
+.progressLabel {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin-bottom: 0.5rem;
+}
+.progressBar {
+  height: 8px;
+  background: var(--color-bg-tertiary);
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+}
+.progressFill {
+  height: 100%;
+  background: var(--color-text);
+  border-radius: var(--radius);
+  transition: width 0.3s;
+}
+.recommended {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  margin-bottom: 3rem;
+}
+.caffeinePitch {
+  max-width: 640px;
+  margin: 0 auto 2.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary);
+  line-height: 1.7;
+  text-align: center;
+}
+.caffeinePitch p {
+  margin: 0;
+}
+.buttons {
+  display: flex;
+  gap: 1.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 3rem;
+}
+.btnIcon {
+  flex-shrink: 0;
+}
+.bmcButton,
+.cryptoButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 1rem 2rem;
+  background: transparent;
+  color: var(--color-text);
+  border: 1px solid var(--color-text);
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-base);
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: background-color 0.15s, color 0.15s;
+  min-width: 240px;
+  justify-content: center;
+}
+.bmcButton:hover,
+.bmcButton:focus-visible,
+.cryptoButton:hover,
+.cryptoButton:focus-visible {
+  background: var(--color-text);
+  color: var(--color-bg);
+  outline: none;
+}
+.badgeDot {
+  width: 8px;
+  height: 8px;
+  background: var(--color-text);
+  border-radius: 50%;
+  animation: pulse 2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.syncPanel {
+  display: inline-block;
+  text-align: left;
+  border: 1px solid var(--color-border-strong);
+  padding: 1.25rem 1.75rem;
+  font-family: var(--font-mono);
+  background: var(--color-bg);
+  max-width: 480px;
+  width: 100%;
+}
+.syncHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding-bottom: 1rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--color-border);
+}
+.syncHeaderLabel {
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text);
+  font-weight: 700;
+}
+.syncGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.5rem;
+  margin: 0;
+}
+.syncRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: var(--font-size-xs);
+  flex-wrap: wrap;
+}
+.syncKey {
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0;
+}
+.syncVal {
+  color: var(--color-text);
+  margin: 0;
+  text-align: right;
+  font-feature-settings: 'tnum' 1;
+}
+.versionTag {
+  font-weight: 700;
+}
+.staleTag {
+  color: var(--color-text-muted);
+  font-weight: 400;
+  margin-left: 0.25rem;
+}
+.syncFootnote {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--color-border);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  text-align: center;
+  letter-spacing: 0.04em;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.cryptoModal {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0, 0, 0, 0.78);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  text-align: left;
+}
+
+.cryptoModal[data-visible="true"] {
+  display: flex;
+}
+
+.cryptoModalCard {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius);
+  width: 100%;
+  max-width: 600px;
+  max-height: calc(100vh - 3rem);
+  display: flex;
+  flex-direction: column;
+}
+
+.cryptoModalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.75rem;
+  border-bottom: 1px solid var(--color-border-strong);
+}
+
+.cryptoModalTitle {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--color-text);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.cryptoModalClose {
+  background: none;
+  border: 1px solid transparent;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xl);
+  width: 2rem;
+  height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.15s, background-color 0.15s, border-color 0.15s;
+}
+
+.cryptoModalClose:hover,
+.cryptoModalClose:focus-visible {
+  color: var(--color-bg);
+  background: var(--color-text);
+  border-color: var(--color-text);
+  outline: none;
+}
+
+.cryptoModalBody {
+  padding: 1.25rem 1.75rem 1.75rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.walletGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.walletGroupHeader {
+  display: flex;
+  align-items: baseline;
+  gap: 0.625rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.walletTicker {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--color-text);
+  letter-spacing: 0.06em;
+}
+
+.walletName {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.walletList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.walletRow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.walletLabel {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.walletAddressRow {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius);
+  background: var(--color-code-bg);
+}
+
+.walletAddress {
+  flex: 1;
+  min-width: 0;
+  padding: 0.625rem 0.875rem;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--color-text);
+  background: transparent;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-radius: 0;
+  border: 0;
+}
+
+.walletCopyBtn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0 0.875rem;
+  background: transparent;
+  border: 0;
+  border-left: 1px solid var(--color-border-strong);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: color 0.15s, background-color 0.15s;
+}
+
+.walletCopyBtn[data-copied="true"] {
+  color: var(--color-text);
+}
+
+.walletCopyBtn:hover,
+.walletCopyBtn:focus-visible {
+  background: var(--color-text);
+  color: var(--color-bg);
+  outline: none;
+}
+
+.walletCopyIcon {
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .section { padding: 3rem 1rem; }
+  .cryptoModal { padding: 0.75rem; }
+  .cryptoModalCard { max-height: calc(100vh - 1.5rem); }
+  .cryptoModalHeader,
+  .cryptoModalBody { padding-inline: 1rem; }
+  .walletCopyLabel { display: none; }
+  .walletCopyBtn { padding: 0 0.75rem; }
+  .walletAddress { font-size: 0.7rem; padding: 0.5rem 0.625rem; }
+}

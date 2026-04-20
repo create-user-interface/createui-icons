@@ -1,0 +1,36 @@
+---
+import styles from '../styles/HowItWorks.module.css';
+import type { Lang } from '../i18n';
+import { useT } from '../i18n';
+import { nbsp } from '../utils/nbsp';
+import { VERSION } from '../utils/iconUrl';
+
+interface Props { lang?: Lang }
+const { lang = 'ru' } = Astro.props;
+const t = useT(lang);
+---
+
+<section class={styles.section}>
+  <h2 class={styles.title} data-i18n="howItWorks.title">{nbsp(t.howItWorks.title)}</h2>
+
+  <div class={styles.diagram}>
+    <div class={styles.node} data-i18n="howItWorks.nodes.request">{nbsp(t.howItWorks.nodes.request)}</div>
+    <span class={styles.arrow}>→</span>
+    <div class={styles.node} data-i18n="howItWorks.nodes.edge">{nbsp(t.howItWorks.nodes.edge)}</div>
+    <span class={styles.arrow}>→</span>
+    <div class={styles.node} data-i18n="howItWorks.nodes.storage">{nbsp(t.howItWorks.nodes.storage)}</div>
+  </div>
+
+  <div class={styles.details}>
+    <div class={styles.detailCard}>
+      <h3 class={styles.detailTitle} data-i18n="howItWorks.geo.title">{nbsp(t.howItWorks.geo.title)}</h3>
+      <p class={styles.detailText} data-i18n="howItWorks.geo.text">{nbsp(t.howItWorks.geo.text)}</p>
+    </div>
+    <div class={styles.detailCard}>
+      <h3 class={styles.detailTitle} data-i18n="howItWorks.cache.title">{nbsp(t.howItWorks.cache.title)}</h3>
+      <p class={styles.detailText}>
+        <span data-i18n="howItWorks.cache.textBefore">{nbsp(t.howItWorks.cache.textBefore)}</span> <code class={styles.codeExample}>{`/${VERSION}/heart.svg?stroke=1.5`}</code><span data-i18n="howItWorks.cache.textAfter">{nbsp(t.howItWorks.cache.textAfter)}</span>
+      </p>
+    </div>
+  </div>
+</section>

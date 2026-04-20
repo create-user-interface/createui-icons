@@ -32,9 +32,10 @@ workflows/
 10. **Build bundle** (`npm run build` → `dist/bundle/createui-icons.js[.map]`).
 11. **Deploy bundle** в `/var/icons/bundles/{ver}/` через `rsync --mkpath` (директория версии создаётся автоматически).
 12. **Smoke-test bundle URL**: `curl https://icon.createui.dev/{ver}/createui-icons.js`.
-13. **`npm publish --access public --provenance`** через **Trusted Publishing (OIDC)**: npm CLI получает короткоживущий токен по id-token workflow permission, проверяет trust-конфигурацию в npm.com и публикует без долгоживущего `NPM_TOKEN`. `--provenance` добавляет SLSA-аттестацию со ссылкой на этот workflow run.
-14. **Commit + tag**: коммитим только `component/package.json` и `package-lock.json` (`manifest.json` живёт на VDS, не в репо). Тег `v{ver}`, `git push --follow-tags`.
-15. **GitHub Release**: `gh release create v{ver}` с body, собранным из Lucide compare API (`v{before}...v{after}`). Разделы Added / Modified / Removed / Renamed + ссылки на npm и CDN. Diff **суммарный** между последним опубликованным пакетом и новой версией — если Lucide выпустил несколько релизов за неделю, все изменения видны в одном релизе.
+13. **`npm publish --access public --provenance`** через **Trusted Publishing (OIDC)**: npm CLI получает короткоживущий токен по id-token workflow permission, проверяет trust-конфигурацию в npm.com и публикует без долгоживущего `NPM_TOKEN`. `--provenance` добавляет SLSA-аттестацию со ссылкой на этот workflow run. Публикуется **до** деплоя лендинга — чтобы при падении publish лендинг не ссылался на несуществующий в npm пакет.
+14. **Landing build + deploy**: `npm ci && npm run build` в `landing/` (prebuild пишет только что bumped версию в `src/generated/version.ts`), затем `rsync landing/dist/` в `/var/www/icons-landing/`. Smoke-test: `/` и `/en/` возвращают 200 + отданный HTML содержит `/{ver}/` (защита от stale-cache).
+15. **Commit + tag**: коммитим `component/package.json`, `component/package-lock.json`, `landing/package-lock.json` (`manifest.json` живёт на VDS, не в репо). Тег `v{ver}`, `git push --follow-tags`.
+16. **GitHub Release**: `gh release create v{ver}` с body, собранным из Lucide compare API (`v{before}...v{after}`). Разделы Added / Modified / Removed / Renamed + ссылки на npm и CDN. Diff **суммарный** между последним опубликованным пакетом и новой версией — если Lucide выпустил несколько релизов за неделю, все изменения видны в одном релизе.
 
 ### Concurrency
 
@@ -54,10 +55,6 @@ workflows/
 
 ### TODO
 
-- **Лендинг** (Stage 4): после реализации `landing/` добавить шаги между bundle-deploy и npm publish:
-  - `cd landing && npm ci && npm run build`
-  - `rsync landing/dist/ deploy@vds:/var/www/icons-landing/`
-  - smoke-test: `curl https://icons.createui.dev/`
 - **Уведомления о падениях** — Telegram/Slack webhook на `failure()` (опционально, после 1-2 успешных прогонов).
 
 ### Локальная отладка

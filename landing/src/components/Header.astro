@@ -1,0 +1,30 @@
+---
+import styles from '../styles/Header.module.css';
+import type { Lang } from '../i18n';
+import { otherLang, pathFor } from '../i18n';
+
+interface Props { lang?: Lang }
+const { lang = 'ru' } = Astro.props;
+const other = otherLang(lang);
+const switchHref = pathFor(other);
+const switchLabel = other.toUpperCase();
+---
+
+<header class={styles.header}>
+  <a href={pathFor(lang)} class={styles.logo}>CreateUI Icons</a>
+  <div class={styles.controls}>
+    <a
+      id="lang-toggle"
+      href={switchHref}
+      hreflang={other}
+      class={styles.toggleBtn}
+      data-lang-switch={other}
+      aria-label="Switch language"
+    >
+      <span class={styles.langLabel} data-lang-label>{switchLabel}</span>
+    </a>
+    <button id="theme-toggle" class={styles.toggleBtn} aria-label="Switch theme" type="button">
+      <span class={styles.themeIcon} aria-hidden="true"></span>
+    </button>
+  </div>
+</header>
