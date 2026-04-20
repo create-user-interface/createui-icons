@@ -1,0 +1,84 @@
+name: deploy-landing
+
+# Деплой лендинга при любых изменениях под `landing/` или bump-е
+# component-версии (чтобы URL-ы в HTML не расходились с реальностью).
+#
+# Lucide-sync кейс обрабатывается inline внутри sync.yml: когда sync.yml
+# пушит коммит с bump-ом версии от имени GITHUB_TOKEN, этот workflow
+# НЕ триггерится (GitHub блокирует каскад). Поэтому sync.yml сам
+# собирает и деплоит лендинг под свежую версию — а сюда приходят только
+# ручные/PR-пуши с изменениями контента/кода лендинга.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'landing/**'
+      - 'component/package.json'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-landing
+  cancel-in-progress: false
+
+env:
+  DOMAIN_LANDING: icons.createui.dev
+  REMOTE_LANDING: /var/www/icons-landing
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup SSH agent
+        uses: webfactory/ssh-agent@v0.10.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Trust VDS host key
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "${{ secrets.SERVER_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: landing/package-lock.json
+
+      - name: Resolve target version
+        id: version
+        run: |
+          v=$(node -p "require('./component/package.json').version")
+          echo "value=$v" >> "$GITHUB_OUTPUT"
+          echo "Landing target version: v$v"
+
+      - name: Install landing deps
+        working-directory: landing
+        run: npm ci
+
+      - name: Build landing
+        working-directory: landing
+        run: npm run build
+
+      - name: Deploy landing to VDS
+        run: |
+          rsync -az --delete \
+            landing/dist/ \
+            "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:$REMOTE_LANDING/"
+
+      - name: Smoke-test landing
+        run: |
+          v="${{ steps.version.outputs.value }}"
+          curl -fsS "https://$DOMAIN_LANDING/" > /dev/null
+          curl -fsS "https://$DOMAIN_LANDING/en/" > /dev/null
+          # HTML должен ссылаться на свежую версию — иначе nginx/браузер
+          # отдал stale-кэш и rsync реально не доехал.
+          curl -fsS "https://$DOMAIN_LANDING/" | grep -q "/$v/" || {
+            echo "Landing HTML doesn't reference v$v"
+            exit 1
+          }
+          echo "Landing OK (v$v)"

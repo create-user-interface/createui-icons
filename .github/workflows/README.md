@@ -6,8 +6,14 @@ GitHub Actions workflows.
 
 ```
 workflows/
-└── sync.yml     # Еженедельная синхронизация Lucide + деплой + npm publish
+├── sync.yml              # Еженедельная синхронизация Lucide + npm publish + inline деплой лендинга
+└── deploy-landing.yml    # Деплой лендинга на каждый push в landing/ (и при bump component/package.json)
 ```
+
+Два пути, без перекрытия:
+
+- **Bump Lucide-версии** → `sync.yml` делает всё атомарно (SVG → bundle → npm → лендинг) в одном run. Когда он пушит bump-коммит от имени `GITHUB_TOKEN`, `deploy-landing.yml` **не** триггерится (GitHub блокирует каскад от токена) — дубль деплоя исключён.
+- **Изменения контента/CSS/JS в лендинге без lucide-релиза** → коммит в `landing/` идёт напрямую в main (или через PR merge), `deploy-landing.yml` ловит по `paths`-фильтру и деплоит под текущую `component/package.json.version`.
 
 ## sync.yml
 
@@ -66,6 +72,32 @@ STORAGE_DIR=./icons-storage bash scripts/sync-lucide.sh sync
 # Force-bootstrap (если storage потерян)
 bash scripts/sync-lucide.sh bootstrap --version 1.8.0 --storage ./icons-storage
 ```
+
+---
+
+## deploy-landing.yml
+
+### Триггеры
+
+- `push` в `main` при изменениях под `landing/**` или в `component/package.json`
+- `workflow_dispatch`: ручной запуск
+
+### Что делает
+
+1. **Checkout** + **SSH agent** + **host key trust** (те же секреты, что у `sync.yml`).
+2. **Setup Node 22** с кэшем по `landing/package-lock.json`.
+3. **Resolve version** — `node -p "require('./component/package.json').version"`. Выставляется как step output, используется в smoke-тесте.
+4. **`npm ci`** + **`npm run build`** в `landing/`. `prebuild` пишет `src/generated/version.ts` и `src/generated/icons.ts` из `component/`.
+5. **Deploy** — `rsync -az --delete landing/dist/` в `/var/www/icons-landing/`.
+6. **Smoke-test** — `curl /` и `/en/` → 200, плюс `grep "/{version}/"` в отданном HTML (защита от stale cache).
+
+### Concurrency
+
+`concurrency: { group: deploy-landing, cancel-in-progress: false }` — независимая от `sync-lucide`, так как эти два workflow никогда не работают с одним состоянием одновременно (см. §«Файлы» выше).
+
+### Секреты
+
+Те же три: `SERVER_HOST`, `SERVER_USER`, `SSH_PRIVATE_KEY`.
 
 Проверить yaml-синтаксис без push:
 
