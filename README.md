@@ -669,6 +669,14 @@ server {
 
 Для `npm publish` долгоживущий `NPM_TOKEN` **не используется**: настроено [Trusted Publishing (OIDC)](https://docs.npmjs.com/trusted-publishers) — npm CLI получает короткоживущий токен по `id-token: write` permission GitHub Actions, проверяет trust-конфигурацию в npm.com (репо + workflow-файл должны совпадать) и публикует с `--provenance` (SLSA-аттестация).
 
+> **⚠️ Первый publish нового пакета OIDC не сделает.** Trusted Publishing умеет публиковать только **новые версии уже существующего** пакета с настроенным trust-конфигом. Для первого релиза нового scope/имени npm вернёт 404 на PUT (выглядит как баг, но это ограничение API). Bootstrap-процедура:
+>
+> 1. Локально: `cd component && npm publish --access public` — через классический 2FA/Touch ID создаём пакет в реестре.
+> 2. На npmjs.com → Package → Settings → Trusted Publishers → Add: `GitHub Actions`, organization = `create-user-interface`, repository = `createui-icons`, workflow filename = `sync.yml`, environment — пусто.
+> 3. Дальше workflow публикует автоматически через OIDC.
+>
+> Та же ловушка сработает, если когда-нибудь добавим новый scope/пакет в workflow — не забыть bootstrap перед первым CI-прогоном.
+
 ### Использование в workflow
 
 ```yaml
