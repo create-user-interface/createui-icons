@@ -145,20 +145,37 @@
 }
 
 .browseLink {
-  display: block;
-  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
   color: var(--color-text);
   font-family: var(--font-mono);
   font-size: var(--text-sm);
   text-decoration: underline;
-  margin-top: 1rem;
+  margin: 1rem auto 0;
   transition: opacity 0.15s;
+  width: fit-content;
 }
 
 .browseLink:hover,
 .browseLink:focus-visible {
   opacity: 0.6;
   outline: none;
+}
+
+.browseLinkIcon {
+  display: inline-block;
+  width: 0.9em;
+  height: 0.9em;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  -webkit-mask-size: contain;
+  background-color: currentColor;
+  flex-shrink: 0;
 }
 
 .popup {

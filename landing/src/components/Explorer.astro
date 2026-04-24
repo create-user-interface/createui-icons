@@ -1,6 +1,6 @@
 ---
 import styles from '../styles/Explorer.module.css';
-import { ICONS as icons } from '../generated/icons';
+import { ICONS as ALL_ICONS } from '../generated/icons';
 import type { Lang } from '../i18n';
 import { useT } from '../i18n';
 import { nbsp } from '../utils/nbsp';
@@ -11,6 +11,12 @@ const { lang = 'ru' } = Astro.props;
 const t = useT(lang);
 
 const WEIGHTS = ['0.5', '0.75', '1', '1.25', '1.5', '1.75', '2', '2.25', '2.5', '2.75', '3'];
+
+// Превью-галерея — только первые 100 иконок; полный каталог — по ссылке
+// на lucide.dev. Рендерить все 1699 на лендинге избыточно: это teaser,
+// не энциклопедия, плюс HTML тяжелее на порядок.
+const icons = ALL_ICONS.slice(0, 100);
+const externalLinkUrl = iconUrl('external-link', '1.5');
 ---
 
 <section class={styles.section}>
@@ -62,9 +68,13 @@ const WEIGHTS = ['0.5', '0.75', '1', '1.25', '1.5', '1.75', '2', '2.25', '2.5', 
     href="https://lucide.dev/icons"
     target="_blank"
     rel="noopener noreferrer"
-    data-i18n="explorer.browseAll"
   >
-    {nbsp(t.explorer.browseAll)}
+    <span data-i18n="explorer.browseAll">{nbsp(t.explorer.browseAll)}</span>
+    <span
+      class={styles.browseLinkIcon}
+      aria-hidden="true"
+      style={`-webkit-mask-image: url('${externalLinkUrl}'); mask-image: url('${externalLinkUrl}');`}
+    />
   </a>
 </section>
 
