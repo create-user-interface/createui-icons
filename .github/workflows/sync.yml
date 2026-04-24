@@ -245,7 +245,12 @@ jobs:
           v="${{ steps.after.outputs.version }}"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add component/package.json component/package-lock.json
+          # icon-names.types.ts регенерируется prebuild-ом из lucide npm
+          # package — его диff коммитим, чтобы landing (deploy-landing.yml
+          # на не-sync push-ах) и TS-консьюмеры пакета видели актуальный
+          # TIconName. landing/package-lock.json не трогается (npm ci его
+          # не меняет, landing-deps не зависят от lucide).
+          git add component/package.json component/package-lock.json component/src/icon-names.types.ts
           git commit -m "chore(sync): bump to lucide $v"
           # Annotated tag — `git push --follow-tags` пушит только их,
           # lightweight теги остаются локальными и в релизе нет git-reference.

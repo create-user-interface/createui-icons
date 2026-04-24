@@ -14,6 +14,10 @@ on:
     paths:
       - 'landing/**'
       - 'component/package.json'
+      # Landing парсит component/src/icon-names.types.ts для Explorer gallery —
+      # ребилд нужен, когда набор иконок в нём меняется (обычно внутри sync,
+      # но иногда и вне — например, ручной фикс generate-icon-names).
+      - 'component/src/icon-names.types.ts'
   workflow_dispatch:
 
 concurrency:
