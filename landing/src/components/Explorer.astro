@@ -50,7 +50,7 @@ const WEIGHTS = ['0.5', '0.75', '1', '1.25', '1.5', '1.75', '2', '2.25', '2.5', 
       >
         <div
           class={styles.iconDisplay}
-          style={`-webkit-mask-image: url('${iconUrl(name, '1.5')}'); mask-image: url('${iconUrl(name, '1.5')}');`}
+          data-icon-url={iconUrl(name, '1.5')}
         />
         <span class={styles.iconName}>{name}</span>
       </div>
@@ -124,6 +124,36 @@ const WEIGHTS = ['0.5', '0.75', '1', '1.25', '1.5', '1.75', '2', '2.25', '2.5', 
   document.querySelectorAll('[data-icon]').forEach((cell) => {
     previewCache.add(buildUrl(cell.dataset.icon, '1.5'));
   });
+
+  // Lazy-load mask-image для ячеек галереи: браузер иначе при быстром
+  // скролле выстреливает пачками запросов за viewport и упирается в
+  // rate-limit 429. IntersectionObserver с rootMargin грузит чуть раньше
+  // попадания в экран — визуально без задержек.
+  const lazyTargets = document.querySelectorAll('[data-icon-url]');
+  if ('IntersectionObserver' in window && lazyTargets.length > 0) {
+    const io = new IntersectionObserver((entries, observer) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        const el = entry.target;
+        const url = el.dataset.iconUrl;
+        if (url) {
+          el.style.setProperty('-webkit-mask-image', `url('${url}')`);
+          el.style.setProperty('mask-image', `url('${url}')`);
+        }
+        observer.unobserve(el);
+      }
+    }, { rootMargin: '400px 0px', threshold: 0 });
+    lazyTargets.forEach((el) => io.observe(el));
+  } else {
+    // Fallback без IO — грузим сразу.
+    lazyTargets.forEach((el) => {
+      const url = el.dataset.iconUrl;
+      if (url) {
+        el.style.setProperty('-webkit-mask-image', `url('${url}')`);
+        el.style.setProperty('mask-image', `url('${url}')`);
+      }
+    });
+  }
 
   async function preload(url) {
     if (previewCache.has(url)) return;
