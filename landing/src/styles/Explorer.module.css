@@ -122,6 +122,15 @@
   -webkit-mask-repeat: no-repeat;
   -webkit-mask-position: center;
   -webkit-mask-size: contain;
+  /* Без background-color ячейка прозрачна, пока не пришла mask-image.
+     Заливка включается в JS через data-loaded после preload-а через
+     new Image() — к этому моменту mask лежит в HTTP-кэше браузера,
+     так что mask-image применяется мгновенно и квадрат не мигает. */
+  background-color: transparent;
+  transition: background-color 0.12s ease-out;
+}
+
+.iconDisplay[data-loaded] {
   background-color: var(--color-text);
 }
 

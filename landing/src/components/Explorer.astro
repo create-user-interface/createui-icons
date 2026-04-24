@@ -129,30 +129,38 @@ const WEIGHTS = ['0.5', '0.75', '1', '1.25', '1.5', '1.75', '2', '2.25', '2.5', 
   // скролле выстреливает пачками запросов за viewport и упирается в
   // rate-limit 429. IntersectionObserver с rootMargin грузит чуть раньше
   // попадания в экран — визуально без задержек.
+  //
+  // Preload через new Image() до установки mask-image: когда onload
+  // фиркается, ответ уже в HTTP-кэше, mask применяется мгновенно,
+  // и data-loaded флип-переключает background на цветной — пустой
+  // цветной квадрат не проскакивает.
+  function loadCell(el) {
+    const url = el.dataset.iconUrl;
+    if (!url) return;
+    const img = new Image();
+    img.onload = () => {
+      el.style.setProperty('-webkit-mask-image', `url('${url}')`);
+      el.style.setProperty('mask-image', `url('${url}')`);
+      el.dataset.loaded = '';
+    };
+    // Тихий error: если SVG 404-нится, ячейка остаётся прозрачной
+    // вместо мигающего цветного квадрата.
+    img.onerror = () => {};
+    img.src = url;
+  }
   const lazyTargets = document.querySelectorAll('[data-icon-url]');
   if ('IntersectionObserver' in window && lazyTargets.length > 0) {
     const io = new IntersectionObserver((entries, observer) => {
       for (const entry of entries) {
         if (!entry.isIntersecting) continue;
-        const el = entry.target;
-        const url = el.dataset.iconUrl;
-        if (url) {
-          el.style.setProperty('-webkit-mask-image', `url('${url}')`);
-          el.style.setProperty('mask-image', `url('${url}')`);
-        }
-        observer.unobserve(el);
+        loadCell(entry.target);
+        observer.unobserve(entry.target);
       }
     }, { rootMargin: '400px 0px', threshold: 0 });
     lazyTargets.forEach((el) => io.observe(el));
   } else {
     // Fallback без IO — грузим сразу.
-    lazyTargets.forEach((el) => {
-      const url = el.dataset.iconUrl;
-      if (url) {
-        el.style.setProperty('-webkit-mask-image', `url('${url}')`);
-        el.style.setProperty('mask-image', `url('${url}')`);
-      }
-    });
+    lazyTargets.forEach(loadCell);
   }
 
   async function preload(url) {
