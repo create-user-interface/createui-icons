@@ -16,7 +16,6 @@ const WEIGHTS = ['0.5', '0.75', '1', '1.25', '1.5', '1.75', '2', '2.25', '2.5', 
 // на lucide.dev. Рендерить все 1699 на лендинге избыточно: это teaser,
 // не энциклопедия, плюс HTML тяжелее на порядок.
 const icons = ALL_ICONS.slice(0, 100);
-const externalLinkUrl = iconUrl('external-link', '1.5');
 ---
 
 <section class={styles.section}>
@@ -70,11 +69,7 @@ const externalLinkUrl = iconUrl('external-link', '1.5');
     rel="noopener noreferrer"
   >
     <span data-i18n="explorer.browseAll">{nbsp(t.explorer.browseAll)}</span>
-    <span
-      class={styles.browseLinkIcon}
-      aria-hidden="true"
-      style={`-webkit-mask-image: url('${externalLinkUrl}'); mask-image: url('${externalLinkUrl}');`}
-    />
+    <createui-icon name="external-link" size="14" stroke="1.5" aria-hidden="true"></createui-icon>
   </a>
 </section>
 

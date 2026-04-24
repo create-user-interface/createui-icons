@@ -164,19 +164,6 @@
   outline: none;
 }
 
-.browseLinkIcon {
-  display: inline-block;
-  width: 0.9em;
-  height: 0.9em;
-  mask-repeat: no-repeat;
-  mask-position: center;
-  mask-size: contain;
-  -webkit-mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  -webkit-mask-size: contain;
-  background-color: currentColor;
-  flex-shrink: 0;
-}
 
 .popup {
   position: fixed;
