@@ -65,7 +65,7 @@ const ru: Dictionary = {
   explorer: {
     title: 'Обзор иконок',
     searchPlaceholder: 'Поиск иконки по имени…',
-    browseAll: 'Все иконки Lucide →',
+    browseAll: 'Все иконки Lucide',
     notFound: 'Не найдено —',
     browseLucide: 'смотреть на Lucide',
     copyUrl: 'Копировать URL',

@@ -65,7 +65,7 @@ const en: Dictionary = {
   explorer: {
     title: 'Explore Icons',
     searchPlaceholder: 'Search any icon name…',
-    browseAll: 'Browse all Lucide icons →',
+    browseAll: 'Browse all Lucide icons',
     notFound: 'Not found —',
     browseLucide: 'browse Lucide',
     copyUrl: 'Copy URL',
