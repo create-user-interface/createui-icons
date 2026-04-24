@@ -264,7 +264,8 @@ jobs:
           # Собрать список изменений из Lucide compare API.
           # --paginate — на случай крупного рефакторинга с > 300 изменённых файлов.
           # `changed` — алиас `modified` в некоторых ответах GitHub API.
-          files=$(gh api --paginate "repos/lucide-icons/lucide/compare/v${before}...v${after}" \
+          # Lucide 1.x теги без префикса `v` (1.8.0, 1.11.0, ...).
+          files=$(gh api --paginate "repos/lucide-icons/lucide/compare/${before}...${after}" \
             --jq '[.files[]?
               | select(.filename | startswith("icons/") and endswith(".svg"))
               | {
@@ -288,7 +289,7 @@ jobs:
           }
 
           {
-            printf "Synced from Lucide [\`v%s\`](https://github.com/lucide-icons/lucide/releases/tag/v%s) → [\`v%s\`](https://github.com/lucide-icons/lucide/releases/tag/v%s).\n\n" "$before" "$before" "$after" "$after"
+            printf "Synced from Lucide [\`%s\`](https://github.com/lucide-icons/lucide/releases/tag/%s) → [\`%s\`](https://github.com/lucide-icons/lucide/releases/tag/%s).\n\n" "$before" "$before" "$after" "$after"
             render_section "Added"    "$added"
             render_section "Modified" "$modified"
             render_section "Removed"  "$removed"
