@@ -81,15 +81,47 @@
 
 .searchResult {
   margin-top: 1rem;
-  text-align: center;
   display: none;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  justify-content: center;
 }
 
+.searchResult[data-state="found"] {
+  display: flex !important;
+}
+
+.searchResult[data-state="not-found"],
+.searchResult[data-state="loading"] {
+  display: block !important;
+  text-align: center;
+}
+
+/* Фиксированное число колонок: 108 иконок делится нацело на 9/6/4/3 —
+   последняя строка всегда полная, без висящих ячеек. */
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  grid-template-columns: repeat(9, 1fr);
   gap: 1rem;
   margin-bottom: 2rem;
+}
+
+@media (max-width: 1024px) {
+  .grid {
+    grid-template-columns: repeat(6, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (max-width: 400px) {
+  .grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
 
 .iconCell {
@@ -355,10 +387,6 @@
     padding: 3rem 1rem;
   }
 
-  .grid {
-    grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
-  }
-  
   .popupCard {
     padding: 1.5rem;
     gap: 1rem;
