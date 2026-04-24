@@ -245,7 +245,9 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add component/package.json component/package-lock.json landing/package-lock.json
           git commit -m "chore(sync): bump to lucide $v"
-          git tag "v$v"
+          # Annotated tag — `git push --follow-tags` пушит только их,
+          # lightweight теги остаются локальными и в релизе нет git-reference.
+          git tag -a "v$v" -m "v$v"
           git push --follow-tags
 
       # ─── GitHub Release ──────────────────────────────────────────────────
