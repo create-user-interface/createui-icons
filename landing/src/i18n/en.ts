@@ -91,7 +91,7 @@ const en: Dictionary = {
     browseAll: 'Browse all Lucide icons',
     notFound: 'Not found —',
     browseLucide: 'browse Lucide',
-    copyUrl: 'Copy URL',
+    copyUrl: 'Copy',
     copiedUrl: '✓ Copied!',
     closeLabel: 'Close',
     clearLabel: 'Clear search',

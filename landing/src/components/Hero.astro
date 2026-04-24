@@ -106,6 +106,7 @@ for (const layer of LAYERS) {
 }
 
 const initialUrl = iconUrl(DEFAULT_ICON, DEFAULT_WEIGHT);
+const initialSnippet = `<createui-icon name="${DEFAULT_ICON}" stroke="${DEFAULT_WEIGHT}"></createui-icon>`;
 ---
 
 <section class={styles.hero}>
@@ -176,7 +177,7 @@ const initialUrl = iconUrl(DEFAULT_ICON, DEFAULT_WEIGHT);
       </div>
 
       <div id="hero-url-display" class={styles.urlDisplay}>
-        {initialUrl}
+        {initialSnippet}
       </div>
     </div>
   </div>
@@ -197,6 +198,10 @@ const initialUrl = iconUrl(DEFAULT_ICON, DEFAULT_WEIGHT);
   if (tracker && iconPreview && weightValueEl && urlDisplay) {
     const segments = Array.from(tracker.querySelectorAll('button[data-hero-weight]'));
 
+    function snippet(weight) {
+      return `<createui-icon name="${DEFAULT_ICON}" stroke="${weight}"></createui-icon>`;
+    }
+
     segments.forEach(segment => {
       segment.addEventListener('click', () => {
         const weight = segment.getAttribute('data-hero-weight');
@@ -207,16 +212,17 @@ const initialUrl = iconUrl(DEFAULT_ICON, DEFAULT_WEIGHT);
         iconPreview.style.setProperty('-webkit-mask-image', `url('${url}')`);
         iconPreview.style.setProperty('mask-image', `url('${url}')`);
         weightValueEl.textContent = weight;
-        urlDisplay.textContent = url;
+        urlDisplay.textContent = snippet(weight);
       });
     });
 
     urlDisplay.addEventListener('click', () => {
-      navigator.clipboard.writeText(urlDisplay.textContent);
-      const originalText = urlDisplay.textContent;
+      const text = urlDisplay.textContent || '';
+      navigator.clipboard.writeText(text);
+      const original = text;
       urlDisplay.textContent = 'COPIED!';
       setTimeout(() => {
-        urlDisplay.textContent = originalText;
+        urlDisplay.textContent = original;
       }, 1500);
     });
   }

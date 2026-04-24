@@ -199,10 +199,14 @@ const allIconsJson = JSON.stringify(ALL_ICONS);
     popupPreview.style.setProperty('mask-image', `url('${url}')`);
   }
 
+  function buildSnippet(name, weight) {
+    return `<createui-icon name="${name}" stroke="${weight}"></createui-icon>`;
+  }
+
   function updatePopup() {
     const url = buildUrl(currentIcon, currentWeight);
 
-    if (popupUrl) popupUrl.textContent = url;
+    if (popupUrl) popupUrl.textContent = buildSnippet(currentIcon, currentWeight);
     document.querySelectorAll('[data-weight]').forEach((chip) => {
       chip.dataset.active = chip.dataset.weight === currentWeight ? 'true' : 'false';
     });
@@ -281,8 +285,8 @@ const allIconsJson = JSON.stringify(ALL_ICONS);
 
   if (popupCopy) {
     popupCopy.addEventListener('click', () => {
-      const url = buildUrl(currentIcon, currentWeight);
-      navigator.clipboard.writeText(url).then(() => {
+      const text = buildSnippet(currentIcon, currentWeight);
+      navigator.clipboard.writeText(text).then(() => {
         const labelEl = popupCopy.querySelector('[data-copy-label]');
         if (!labelEl) return;
         labelEl.textContent = copiedLabelText();

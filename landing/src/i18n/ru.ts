@@ -91,7 +91,7 @@ const ru: Dictionary = {
     browseAll: 'Все иконки Lucide',
     notFound: 'Не найдено —',
     browseLucide: 'смотреть на Lucide',
-    copyUrl: 'Копировать URL',
+    copyUrl: 'Копировать',
     copiedUrl: '✓ Скопировано!',
     closeLabel: 'Закрыть',
     clearLabel: 'Очистить поиск',
