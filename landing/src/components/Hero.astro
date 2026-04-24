@@ -189,7 +189,7 @@ const initialSnippet = `<createui-icon name="${DEFAULT_ICON}" stroke="${DEFAULT_
   </div>
 </section>
 
-<script is:inline define:vars={{ CDN, VERSION, DEFAULT_ICON }}>
+<script is:inline define:vars={{ CDN, VERSION, DEFAULT_ICON, DEFAULT_WEIGHT }}>
   const tracker = document.getElementById('hero-weight-tracker');
   const iconPreview = document.getElementById('hero-icon-preview');
   const weightValueEl = document.querySelector('[data-hero-weight-value]');
@@ -198,8 +198,19 @@ const initialSnippet = `<createui-icon name="${DEFAULT_ICON}" stroke="${DEFAULT_
   if (tracker && iconPreview && weightValueEl && urlDisplay) {
     const segments = Array.from(tracker.querySelectorAll('button[data-hero-weight]'));
 
+    // currentWeight — single source of truth; urlDisplay всегда ресетится
+    // от него, а не от последнего захваченного textContent. Избегает
+    // состояния «застряло COPIED!», когда быстрый повторный клик
+    // сохранял "COPIED!" как original и таймаут его же восстанавливал.
+    let currentWeight = DEFAULT_WEIGHT;
+    let copyTimer = null;
+
     function snippet(weight) {
       return `<createui-icon name="${DEFAULT_ICON}" stroke="${weight}"></createui-icon>`;
+    }
+
+    function resetSnippetDisplay() {
+      urlDisplay.textContent = snippet(currentWeight);
     }
 
     segments.forEach(segment => {
@@ -208,21 +219,24 @@ const initialSnippet = `<createui-icon name="${DEFAULT_ICON}" stroke="${DEFAULT_
         segments.forEach(seg => seg.setAttribute('data-active', 'false'));
         segment.setAttribute('data-active', 'true');
 
+        currentWeight = weight;
         const url = `${CDN}/${VERSION}/${DEFAULT_ICON}.svg?stroke=${weight}`;
         iconPreview.style.setProperty('-webkit-mask-image', `url('${url}')`);
         iconPreview.style.setProperty('mask-image', `url('${url}')`);
         weightValueEl.textContent = weight;
-        urlDisplay.textContent = snippet(weight);
+
+        if (copyTimer) { clearTimeout(copyTimer); copyTimer = null; }
+        resetSnippetDisplay();
       });
     });
 
     urlDisplay.addEventListener('click', () => {
-      const text = urlDisplay.textContent || '';
-      navigator.clipboard.writeText(text);
-      const original = text;
+      navigator.clipboard.writeText(snippet(currentWeight));
       urlDisplay.textContent = 'COPIED!';
-      setTimeout(() => {
-        urlDisplay.textContent = original;
+      if (copyTimer) clearTimeout(copyTimer);
+      copyTimer = setTimeout(() => {
+        resetSnippetDisplay();
+        copyTimer = null;
       }, 1500);
     });
   }
