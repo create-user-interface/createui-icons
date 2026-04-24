@@ -98,29 +98,32 @@
 }
 
 /* Фиксированное число колонок: 108 иконок делится нацело на 9/6/4/3 —
-   последняя строка всегда полная, без висящих ячеек. */
+   последняя строка всегда полная, без висящих ячеек. `minmax(0, 1fr)`
+   вместо `1fr` нужен, иначе длинные имена (вроде
+   `align-horizontal-distribute-start`) раздувают трек до ширины
+   min-content и ломают сетку горизонтальным скроллом. */
 .grid {
   display: grid;
-  grid-template-columns: repeat(9, 1fr);
+  grid-template-columns: repeat(9, minmax(0, 1fr));
   gap: 1rem;
   margin-bottom: 2rem;
 }
 
 @media (max-width: 1024px) {
   .grid {
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 640px) {
   .grid {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 400px) {
   .grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
@@ -130,13 +133,16 @@
   align-items: center;
   justify-content: center;
   gap: 0.25rem;
-  padding: 1rem;
+  padding: 1rem 0.5rem;
   border-radius: var(--radius);
   cursor: pointer;
   transition: background-color 0.15s;
   border: 1px solid transparent;
   content-visibility: auto;
   contain-intrinsic-size: 96px 96px;
+  /* Без min-width:0 flex-child наследует min-width: auto = min-content,
+     и длинные имена иконок раздули бы grid-трек за пределы ширины колонки. */
+  min-width: 0;
 }
 
 .iconCell:hover,
