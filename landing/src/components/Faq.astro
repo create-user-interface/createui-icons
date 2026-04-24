@@ -1,0 +1,34 @@
+---
+import styles from '../styles/Faq.module.css';
+import type { Lang } from '../i18n';
+import { useT } from '../i18n';
+import { nbsp } from '../utils/nbsp';
+
+interface Props { lang?: Lang }
+const { lang = 'ru' } = Astro.props;
+const t = useT(lang);
+---
+
+<section class={styles.section}>
+  <div class={styles.container}>
+    <h2 class={styles.title} data-i18n="faq.title">{nbsp(t.faq.title)}</h2>
+
+    <div class={styles.list}>
+      {t.faq.items.map((item, i) => (
+        <details class={styles.item}>
+          <summary class={styles.question}>
+            <span data-i18n={`faq.items.${i}.q`}>{nbsp(item.q)}</span>
+            <createui-icon
+              class={styles.chevron}
+              name="chevron-down"
+              size="16"
+              stroke="1.5"
+              aria-hidden="true"
+            ></createui-icon>
+          </summary>
+          <p class={styles.answer} data-i18n={`faq.items.${i}.a`}>{nbsp(item.a)}</p>
+        </details>
+      ))}
+    </div>
+  </div>
+</section>

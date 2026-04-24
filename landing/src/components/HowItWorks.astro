@@ -33,4 +33,19 @@ const t = useT(lang);
       </p>
     </div>
   </div>
+
+  <div class={styles.browserSupport}>
+    <div class={styles.browserCopy}>
+      <h3 class={styles.detailTitle} data-i18n="howItWorks.browserSupport.title">{nbsp(t.howItWorks.browserSupport.title)}</h3>
+      <p class={styles.detailText} data-i18n="howItWorks.browserSupport.text">{nbsp(t.howItWorks.browserSupport.text)}</p>
+    </div>
+    <ul class={styles.browserList} role="list">
+      {t.howItWorks.browserSupport.browsers.map((b, i) => (
+        <li class={styles.browserItem}>
+          <span class={styles.browserName} data-i18n={`howItWorks.browserSupport.browsers.${i}.name`}>{b.name}</span>
+          <span class={styles.browserVersion} data-i18n={`howItWorks.browserSupport.browsers.${i}.version`}>{b.version}</span>
+        </li>
+      ))}
+    </ul>
+  </div>
 </section>

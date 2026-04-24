@@ -3,6 +3,7 @@ import styles from '../styles/Footer.module.css';
 import type { Lang } from '../i18n';
 import { useT } from '../i18n';
 import { nbsp } from '../utils/nbsp';
+import { CDN } from '../utils/iconUrl';
 
 interface Props { lang?: Lang }
 const { lang = 'ru' } = Astro.props;
@@ -10,16 +11,60 @@ const t = useT(lang);
 
 const TELEGRAM_URL = 'https://t.me/createui';
 const GITHUB_URL = 'https://github.com/create-user-interface/createui-icons';
+const CHANGELOG_URL = `${GITHUB_URL}/releases`;
+const HEALTH_URL = `${CDN}/health`;
 ---
 
 <footer class={styles.footer}>
   <div class={styles.container}>
-    <p class={styles.attribution}>
-      <span data-i18n="footer.attributionBefore">{nbsp(t.footer.attributionBefore)}</span> <a class={styles.link} href="https://lucide.dev" target="_blank" rel="noopener">Lucide</a><span data-i18n="footer.attributionAfter">{nbsp(t.footer.attributionAfter)}</span>
-    </p>
+    <div class={styles.meta}>
+      <p class={styles.attribution}>
+        <span data-i18n="footer.attributionBefore">{nbsp(t.footer.attributionBefore)}</span> <a class={styles.link} href="https://lucide.dev" target="_blank" rel="noopener">Lucide</a><span data-i18n="footer.attributionAfter">{nbsp(t.footer.attributionAfter)}</span> · <span data-i18n="footer.licenseLabel">{nbsp(t.footer.licenseLabel)}</span>
+      </p>
+      <div
+        class={styles.status}
+        data-health-indicator
+        data-health-url={HEALTH_URL}
+        data-label={t.footer.statusLabel}
+        data-label-ok={t.footer.statusOk}
+        data-label-error={t.footer.statusError}
+      >
+        <span class={styles.statusDot} data-status-dot></span>
+        <span class={styles.statusText}>
+          <span data-i18n="footer.statusLabel">{t.footer.statusLabel}</span>
+          <span data-status-value>…</span>
+        </span>
+      </div>
+    </div>
+
     <div class={styles.links}>
-      <a class={styles.link} href={TELEGRAM_URL} target="_blank" rel="noopener">Telegram</a>
+      <a class={styles.link} href={CHANGELOG_URL} target="_blank" rel="noopener" data-i18n="footer.changelogLabel">{t.footer.changelogLabel}</a>
       <a class={styles.link} href={GITHUB_URL} target="_blank" rel="noopener">GitHub</a>
+      <a class={styles.link} href={TELEGRAM_URL} target="_blank" rel="noopener">Telegram</a>
     </div>
   </div>
 </footer>
+
+<script is:inline>
+  // Пингуем /health при загрузке. Ответ «ok» → зелёный dot, иначе — красный.
+  // Один fetch на загрузку страницы — не спамим endpoint.
+  (function () {
+    const el = document.querySelector('[data-health-indicator]');
+    if (!el) return;
+    const url = el.getAttribute('data-health-url');
+    const dot = el.querySelector('[data-status-dot]');
+    const value = el.querySelector('[data-status-value]');
+    if (!url || !dot || !value) return;
+
+    function apply(ok) {
+      el.dataset.state = ok ? 'ok' : 'error';
+      const labelKey = ok ? 'data-label-ok' : 'data-label-error';
+      value.textContent = el.getAttribute(labelKey) || '';
+    }
+
+    fetch(url, { cache: 'no-store' })
+      .then((r) => r.ok && r.text())
+      .then((body) => apply(typeof body === 'string' && body.trim() === 'ok'))
+      .catch(() => apply(false));
+  })();
+</script>

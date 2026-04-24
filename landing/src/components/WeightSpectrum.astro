@@ -1,0 +1,39 @@
+---
+import styles from '../styles/WeightSpectrum.module.css';
+import type { Lang } from '../i18n';
+import { useT } from '../i18n';
+import { nbsp } from '../utils/nbsp';
+import { iconUrl } from '../utils/iconUrl';
+
+interface Props { lang?: Lang }
+const { lang = 'ru' } = Astro.props;
+const t = useT(lang);
+
+const ICON = 'feather';
+const WEIGHTS = ['0.5', '0.75', '1', '1.25', '1.5', '1.75', '2', '2.25', '2.5', '2.75', '3'];
+---
+
+<section class={styles.section}>
+  <div class={styles.container}>
+    <h2 class={styles.title} data-i18n="weightSpectrum.title">{nbsp(t.weightSpectrum.title)}</h2>
+    <p class={styles.subtitle} data-i18n="weightSpectrum.subtitle">{nbsp(t.weightSpectrum.subtitle)}</p>
+
+    <div class={styles.strip} role="list">
+      {WEIGHTS.map((w) => {
+        const url = iconUrl(ICON, w);
+        return (
+          <div class={styles.cell} role="listitem">
+            <div
+              class={styles.icon}
+              style={`-webkit-mask-image: url('${url}'); mask-image: url('${url}');`}
+              aria-hidden="true"
+            />
+            <span class={styles.caption}>
+              <span data-i18n="weightSpectrum.captionPrefix">{t.weightSpectrum.captionPrefix}</span>{w}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  </div>
+</section>

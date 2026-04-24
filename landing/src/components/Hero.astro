@@ -140,6 +140,15 @@ const initialUrl = iconUrl(DEFAULT_ICON, DEFAULT_WEIGHT);
         <span data-i18n="hero.subtitleLine1">{nbsp(t.hero.subtitleLine1)}</span><br />
         <span data-i18n="hero.subtitleLine2">{nbsp(t.hero.subtitleLine2)}</span>
       </p>
+
+      <dl class={styles.stats}>
+        {t.hero.stats.map((s, i) => (
+          <div class={styles.stat}>
+            <dt class={styles.statValue} data-i18n={`hero.stats.${i}.value`}>{s.value}</dt>
+            <dd class={styles.statLabel} data-i18n={`hero.stats.${i}.label`}>{s.label}</dd>
+          </div>
+        ))}
+      </dl>
     </div>
 
     <div class={styles.demo}>

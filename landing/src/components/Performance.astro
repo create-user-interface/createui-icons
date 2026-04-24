@@ -7,30 +7,41 @@ import { nbsp } from '../utils/nbsp';
 interface Props { lang?: Lang }
 const { lang = 'ru' } = Astro.props;
 const t = useT(lang);
+
+const lastIdx = t.performance.columns.length - 1;
 ---
 
 <section class={styles.section}>
   <div class={styles.container}>
     <h2 class={styles.title} data-i18n="performance.title">{nbsp(t.performance.title)}</h2>
+    <p class={styles.subtitle} data-i18n="performance.subtitle">{nbsp(t.performance.subtitle)}</p>
     <div class={styles.tableWrapper}>
       <table class={styles.table}>
         <thead>
           <tr>
             <th data-i18n="performance.metric">{nbsp(t.performance.metric)}</th>
-            <th>lucide-react</th>
-            <th>CreateUI CDN</th>
+            {t.performance.columns.map((col, i) => (
+              <th class={i === lastIdx ? styles.headHighlight : ''} data-i18n={`performance.columns.${i}`}>{nbsp(col)}</th>
+            ))}
           </tr>
         </thead>
         <tbody>
           {t.performance.rows.map((row, i) => (
             <tr>
               <td data-i18n={`performance.rows.${i}.metric`}>{nbsp(row.metric)}</td>
-              <td class={styles.dim} data-i18n={`performance.rows.${i}.lucide`}>{row.lucide}</td>
-              <td class={styles.highlight} data-i18n={`performance.rows.${i}.createui`}>{row.createui}</td>
+              {row.values.map((v, j) => (
+                <td
+                  class={row.highlightLast && j === lastIdx ? styles.highlight : styles.dim}
+                  data-i18n={`performance.rows.${i}.values.${j}`}
+                >
+                  {nbsp(v)}
+                </td>
+              ))}
             </tr>
           ))}
         </tbody>
       </table>
     </div>
+    <p class={styles.footnote} data-i18n="performance.footnote">{nbsp(t.performance.footnote)}</p>
   </div>
 </section>

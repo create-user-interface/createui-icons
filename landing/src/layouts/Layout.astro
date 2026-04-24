@@ -69,7 +69,7 @@ const maskIconUrls = {
     <link rel="preload" href="/fonts/GolosText-Regular.woff2" as="font" type="font/woff2" crossorigin />
 
     <link rel="preload" href={iconBundle} as="script" crossorigin />
-    <script is:inline src={iconBundle} crossorigin defer></script>
+    <script is:inline src={iconBundle} crossorigin="anonymous" defer></script>
 
     <style is:global define:vars={maskIconUrls}>
       :root {

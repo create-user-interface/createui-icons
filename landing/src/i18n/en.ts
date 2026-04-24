@@ -3,12 +3,13 @@ import type { Dictionary } from './types';
 const en: Dictionary = {
   meta: {
     title: 'CreateUI Icons — Lucide CDN',
-    description: 'Zero bundle size. 11 stroke weights. Global Edge Delivery. Production-ready Lucide icons via CDN.',
+    description: '1700+ Lucide icons via CDN. 3 KB gzipped runtime, 11 stroke weights, 365-day immutable cache. No icon bundle in your JS.',
   },
 
   header: {
     logo: 'CreateUI Icons',
     switchTo: 'Switch to Russian',
+    githubLabel: 'GitHub',
   },
 
   hero: {
@@ -17,6 +18,18 @@ const en: Dictionary = {
     subtitleLine1: 'Zero bundle size. 11 stroke weights.',
     subtitleLine2: 'Global Edge Delivery via CDN.',
     weightLabel: 'weight',
+    stats: [
+      { value: '1700+', label: 'icons' },
+      { value: '3 KB', label: 'gzip runtime' },
+      { value: '11', label: 'stroke weights' },
+      { value: '365d', label: 'immutable cache' },
+    ],
+  },
+
+  weightSpectrum: {
+    title: '11 stroke weights · one icon',
+    subtitle: 'Single asset on the server, weight is a query param. Proportions and anti-aliasing handled server-side — zero client runtime for the stroke math.',
+    captionPrefix: 'stroke=',
   },
 
   problems: {
@@ -53,6 +66,16 @@ const en: Dictionary = {
       textBefore: 'Every URL is versioned:',
       textAfter: ' The browser caches for 365 days with zero revalidation. To update — change the version in the URL. Old versions stay alive. New version = new URL = new cache slot. Zero invalidation, zero downtime.',
     },
+    browserSupport: {
+      title: 'Browser Support',
+      text: 'Web Components + CSS mask-image. Works in every modern browser — baseline since 2019.',
+      browsers: [
+        { name: 'Chrome', version: '77+' },
+        { name: 'Firefox', version: '63+' },
+        { name: 'Safari', version: '10.1+' },
+        { name: 'Edge', version: '79+' },
+      ],
+    },
   },
 
   integration: {
@@ -75,26 +98,58 @@ const en: Dictionary = {
   },
 
   performance: {
-    title: 'Performance Comparison',
+    title: 'vs. the alternatives',
+    subtitle: 'Bundle cost compared at 50 production icons.',
     metric: 'Metric',
+    columns: ['lucide-react', '@iconify/react', 'react-icons', 'CreateUI CDN'],
     rows: [
-      { metric: 'Bundle size',    lucide: '+250 KB',          createui: '0 KB' },
-      { metric: 'Render time',    lucide: '~15ms',            createui: '<1ms' },
-      { metric: 'DOM nodes',      lucide: '1 per icon',       createui: '0 (mask-image)' },
-      { metric: 'Stroke weights', lucide: '1',                createui: '11' },
-      { metric: 'Caching',        lucide: 'None (JS bundle)', createui: 'Immutable, 365 days' },
+      { metric: 'Bundle footprint',   values: ['+250 KB', '+4 KB + on-demand HTTP', '+45 KB (tree-shaken)', '0 KB'],                     highlightLast: true },
+      { metric: 'Runtime payload',    values: ['Full package in JS', 'Async JSON per icon', 'Full package in JS',   '3 KB gzip + SVG on request'], highlightLast: true },
+      { metric: 'Stroke weights',     values: ['1', '1', '1', '11'],                                                                         highlightLast: true },
+      { metric: 'DOM nodes per icon', values: ['1 SVG + paths', '1 SVG + paths', '1 SVG + paths', '0 (mask-image)'],                       highlightLast: true },
+      { metric: 'Caching',            values: ['—', 'per-icon HTTP', '—', 'immutable 365 days'],                                           highlightLast: true },
+      { metric: 'Framework-agnostic', values: ['React only', 'React/Vue/Svelte', 'React only', 'any (Web Component)'],                     highlightLast: true },
+    ],
+    footnote: 'lucide-react numbers from unpkg.com/lucide-react esm.sh bundle; react-icons estimated for 50 icons after tree-shake; @iconify/react is a runtime wrapper + async fetches. CreateUI CDN is the measured gzipped runtime bundle.',
+  },
+
+  faq: {
+    title: 'FAQ',
+    items: [
+      {
+        q: 'What if the CDN goes down?',
+        a: 'Bundle and SVG endpoints are plain nginx static on a single VDS, plus 365-day browser HTTP cache. Icons already loaded survive any downtime. Paranoid mode: use the CSS snippet from the Integration section — it reads SVGs directly via URL and works even if the web component fails to load.',
+      },
+      {
+        q: 'Does it work with SSR (Next.js, Nuxt, Remix, Astro)?',
+        a: 'Yes. `<createui-icon>` is a custom element — it renders as an empty tag during SSR and hydrates on the client. The mask-image approach works fully at SSR — URLs in CSS are safe for any render pipeline. This site is built with Astro and uses both.',
+      },
+      {
+        q: 'What about tree-shaking? I don\'t use all 1700 icons.',
+        a: 'You don\'t need to. Your bundle only contains the 3 KB gzipped runtime — it can render any icon by name. Each SVG is fetched on first use, then served from cache. You pay exactly for what the user actually sees on screen.',
+      },
+      {
+        q: 'What if Lucide renames or removes an icon?',
+        a: 'Every version URL is immutable — `/1.11.0/foo.svg` never changes. Even if Lucide drops `foo` in 1.12.0, your production pinned to 1.11.0 keeps working. When you upgrade, you migrate once.',
+      },
+      {
+        q: 'Can I self-host, no CDN?',
+        a: 'Yes. The SVG storage is a flat content-addressable store (`versions/{ver}/{name}.svg`) and the Go server in `server/` is self-hostable. Point `@createui-dev/icons` at your own origin via the `icon.ts` constant. URL format stays the same.',
+      },
+      {
+        q: 'How is it licensed?',
+        a: 'SVG files — Lucide ISC license. Our runtime (`@createui-dev/icons`) — MIT. CDN infrastructure — public, free, no signup. Source and config on GitHub.',
+      },
+      {
+        q: 'How current is the icon set?',
+        a: 'Synced with Lucide every Monday 06:00 UTC. When Lucide ships a new version, a matching `@createui-dev/icons` release goes out automatically. Current version: see the footer.',
+      },
     ],
   },
 
   support: {
-    title: 'Support the Project',
-    description: 'This project runs on enthusiasm and is funded personally. To keep createui.dev alive and icons in your apps — support the infrastructure.',
-    progressLabel: 'Domain funded for 2026: $${funded} / $${goal}',
-    recommended: 'Recommended: $1/month — keeps the CDN alive for everyone.',
-    caffeinePitch: {
-      line1: 'This service is free for everyone, but my sleep deprivation isn\'t. Your donations go straight into the high-quality caffeine that fuels my late-night coding sessions and keeps the infrastructure running.',
-      line2: 'One coffee = one month of guaranteed uptime and one more night of me staring at the screen so you don\'t have to. Help keep the domain alive and my brain functional!',
-    },
+    title: 'Support the project',
+    intro: 'CreateUI Icons is maintained as open-source infrastructure. The CDN runs on a personal VDS; domain and traffic are paid out of pocket. If the library solves your problem, help keep it online. A single coffee ≈ one month of domain and traffic.',
     bmcButton: 'Buy Me a Coffee',
     cryptoButton: 'Crypto',
     sync: {
@@ -115,7 +170,12 @@ const en: Dictionary = {
 
   footer: {
     attributionBefore: 'Original icons by',
-    attributionAfter: '. Licensed under ISC. Infrastructure by CreateUI.',
+    attributionAfter: '. ISC license.',
+    licenseLabel: 'Runtime MIT',
+    changelogLabel: 'Changelog',
+    statusLabel: 'CDN',
+    statusOk: 'online',
+    statusError: 'offline',
   },
 };
 

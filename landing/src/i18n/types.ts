@@ -6,6 +6,7 @@ export interface Dictionary {
   header: {
     logo: string;
     switchTo: string;
+    githubLabel: string;
   };
   hero: {
     titleLine1: string;
@@ -13,6 +14,12 @@ export interface Dictionary {
     subtitleLine1: string;
     subtitleLine2: string;
     weightLabel: string;
+    stats: ReadonlyArray<{ value: string; label: string }>;
+  };
+  weightSpectrum: {
+    title: string;
+    subtitle: string;
+    captionPrefix: string;
   };
   problems: {
     title: string;
@@ -34,6 +41,11 @@ export interface Dictionary {
       textBefore: string;
       textAfter: string;
     };
+    browserSupport: {
+      title: string;
+      text: string;
+      browsers: ReadonlyArray<{ name: string; version: string }>;
+    };
   };
   integration: {
     title: string;
@@ -54,18 +66,19 @@ export interface Dictionary {
   };
   performance: {
     title: string;
+    subtitle: string;
     metric: string;
-    rows: ReadonlyArray<{ metric: string; lucide: string; createui: string }>;
+    columns: ReadonlyArray<string>;
+    rows: ReadonlyArray<{ metric: string; values: ReadonlyArray<string>; highlightLast: boolean }>;
+    footnote: string;
+  };
+  faq: {
+    title: string;
+    items: ReadonlyArray<{ q: string; a: string }>;
   };
   support: {
     title: string;
-    description: string;
-    progressLabel: string;
-    recommended: string;
-    caffeinePitch: {
-      line1: string;
-      line2: string;
-    };
+    intro: string;
     bmcButton: string;
     cryptoButton: string;
     sync: {
@@ -86,6 +99,11 @@ export interface Dictionary {
   footer: {
     attributionBefore: string;
     attributionAfter: string;
+    licenseLabel: string;
+    changelogLabel: string;
+    statusLabel: string;
+    statusOk: string;
+    statusError: string;
   };
 }
 
