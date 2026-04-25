@@ -72,6 +72,13 @@ export interface Dictionary {
     rows: ReadonlyArray<{ metric: string; values: ReadonlyArray<string>; highlightLast: boolean }>;
     footnote: string;
   };
+  talk: {
+    eyebrow: string;
+    title: string;
+    description: string;
+    thumbAlt: string;
+    videoLabel: string;
+  };
   faq: {
     title: string;
     items: ReadonlyArray<{ q: string; a: string }>;

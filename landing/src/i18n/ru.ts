@@ -113,6 +113,14 @@ const ru: Dictionary = {
     footnote: 'Цифры lucide-react — unpkg.com/lucide-react, esm.sh bundle; react-icons — оценка для 50 иконок после tree-shake; @iconify/react — рантайм-обвязка + async-подгрузка. CreateUI CDN — прямое измерение gzipped runtime bundle.',
   },
 
+  talk: {
+    eyebrow: 'Доклад на конференции · RU',
+    title: 'Идея, которая стала проектом',
+    description: 'Запись выступления о подходе, который лёг в основу CreateUI Icons.',
+    thumbAlt: 'Превью записи доклада',
+    videoLabel: 'Открыть запись доклада на YouTube',
+  },
+
   faq: {
     title: 'Частые вопросы',
     items: [

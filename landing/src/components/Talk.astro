@@ -1,0 +1,47 @@
+---
+import styles from '../styles/Talk.module.css';
+import type { Lang } from '../i18n';
+import { useT } from '../i18n';
+import { nbsp } from '../utils/nbsp';
+
+interface Props { lang?: Lang }
+const { lang = 'ru' } = Astro.props;
+const t = useT(lang);
+
+const VIDEO_ID = '7P99kvUDVdU';
+const VIDEO_URL = `https://www.youtube.com/watch?v=${VIDEO_ID}`;
+const THUMBNAIL_URL = `https://i.ytimg.com/vi/${VIDEO_ID}/hqdefault.jpg`;
+---
+
+<section class={styles.section}>
+  <div class={styles.container}>
+    <p class={styles.eyebrow} data-i18n="talk.eyebrow">{nbsp(t.talk.eyebrow)}</p>
+    <h2 class={styles.title} data-i18n="talk.title">{nbsp(t.talk.title)}</h2>
+    <p class={styles.description} data-i18n="talk.description">{nbsp(t.talk.description)}</p>
+
+    <a
+      class={styles.card}
+      href={VIDEO_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={t.talk.videoLabel}
+      data-i18n-attr="aria-label:talk.videoLabel"
+    >
+      <img
+        class={styles.thumb}
+        src={THUMBNAIL_URL}
+        alt={t.talk.thumbAlt}
+        data-i18n-attr="alt:talk.thumbAlt"
+        loading="lazy"
+        decoding="async"
+        width="480"
+        height="360"
+      />
+      <span class={styles.play} aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor">
+          <path d="M8 5v14l11-7z" />
+        </svg>
+      </span>
+    </a>
+  </div>
+</section>

@@ -113,6 +113,14 @@ const en: Dictionary = {
     footnote: 'lucide-react numbers from unpkg.com/lucide-react esm.sh bundle; react-icons estimated for 50 icons after tree-shake; @iconify/react is a runtime wrapper + async fetches. CreateUI CDN is the measured gzipped runtime bundle.',
   },
 
+  talk: {
+    eyebrow: 'Conference talk · RU',
+    title: 'The idea behind the project',
+    description: 'Recording of the talk that introduced the approach behind CreateUI Icons. The talk is in Russian.',
+    thumbAlt: 'Talk recording preview',
+    videoLabel: 'Open the talk recording on YouTube',
+  },
+
   faq: {
     title: 'FAQ',
     items: [
