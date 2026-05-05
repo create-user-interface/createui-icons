@@ -7,9 +7,15 @@
 #       создаёт blobs/ и versions/VER/ с симлинками, пишет manifest.json.
 #
 #   sync [--storage DIR] [--from VER]
-#       Инкрементальная синхронизация: для каждой версии новее manifest.latest
+#       Инкрементальная синхронизация: для каждой версии новее manifest.upstream
 #       (или --from) получает diff через compare API, скачивает только изменённые
 #       SVG, обновляет блобы/симлинки/манифест.
+#
+# Manifest fields:
+#   latest    — версия, опубликованная в npm/bundle (может быть patch-release,
+#               которого нет в upstream — например, 1.11.1 как алиас 1.11.0).
+#   upstream  — последний реальный тег в lucide-icons/lucide, от которого ведём
+#               compare. Старые манифесты без `upstream` трактуются как upstream=latest.
 #
 # Требования:
 #   - bash 4.0+ (macOS default 3.2 не подойдёт — `brew install bash`)
@@ -150,7 +156,7 @@ cmd_bootstrap() {
 
   # Собрать manifest.json
   jq --arg v "$version" --slurpfile hashes "$hashes_json" \
-     '{latest: $v, versions: {($v): $hashes[0]}}' \
+     '{latest: $v, upstream: $v, versions: {($v): $hashes[0]}}' \
      <<< '{}' > "$manifest"
   rm -f "$hashes_json"
 
@@ -165,15 +171,17 @@ cmd_sync() {
   local manifest="$storage/manifest.json"
   [ -f "$manifest" ] || fail "no $manifest — run 'bootstrap' first"
 
+  # Базис для compare API — последний реальный upstream-тег lucide. На старых
+  # манифестах без поля upstream фолбэчимся на latest (был аналог).
   local current
   if [ -n "$from" ]; then
     current="$from"
   else
-    current=$(jq -r '.latest // empty' "$manifest")
+    current=$(jq -r '.upstream // .latest // empty' "$manifest")
   fi
-  [ -n "$current" ] || fail "no current version (manifest.latest empty and --from not set)"
+  [ -n "$current" ] || fail "no current version (manifest.upstream/latest empty and --from not set)"
 
-  log "current: $current"
+  log "current upstream: $current"
 
   local new_versions
   new_versions=$(list_newer_versions "$current")
@@ -320,7 +328,7 @@ sync_one_version_full() {
   # Manifest: для fallback новый маппинг полностью из $hashes_json (вся версия),
   # removed уже учтён (отсутствующие иконки просто не попали).
   jq --arg new "$new" --slurpfile full "$hashes_json" \
-     '.versions[$new] = $full[0] | .latest = $new' \
+     '.versions[$new] = $full[0] | .latest = $new | .upstream = $new' \
      "$manifest" > "${manifest}.tmp"
   mv "${manifest}.tmp" "$manifest"
 
@@ -377,7 +385,8 @@ update_manifest() {
          | to_entries
          | map(select(.key as $k | $removed[0] | index($k) | not))
          | from_entries)
-      | .latest = $new' \
+      | .latest = $new
+      | .upstream = $new' \
      "$manifest" > "${manifest}.tmp"
   mv "${manifest}.tmp" "$manifest"
 }
