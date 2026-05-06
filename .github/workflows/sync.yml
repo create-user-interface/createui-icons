@@ -212,11 +212,14 @@ jobs:
       # на прежней версии и не ссылается в примерах на пакет, которого нет в npm.
       # npm 11.5.1+ нужен для OIDC Trusted Publishing — Node 22 LTS приходит
       # с npm 10.x, и `npm publish --provenance` без апгрейда падает на
-      # `404 Not Found - PUT` (npm маскирует auth-fail как 404, см. memory
-      # `npm_oidc_first_publish.md`). Глобальный апгрейд минимален и быстр.
+      # `404 Not Found - PUT` (npm маскирует auth-fail как 404).
+      # Прямой `npm install -g npm@latest` ловит self-overwrite race
+      # (MODULE_NOT_FOUND: promise-retry — старый npm уже подгрузил часть
+      # модулей до того, как новый затёр файлы). Через npx обходится:
+      # npm@latest качается в отдельный temp и оттуда ставит себя глобально.
       - name: Upgrade npm for OIDC publishing
         if: steps.after.outputs.changed == 'true'
-        run: npm install -g npm@latest
+        run: npx -y npm@latest install -g npm@latest
 
       - name: Publish to npm
         if: steps.after.outputs.changed == 'true'
