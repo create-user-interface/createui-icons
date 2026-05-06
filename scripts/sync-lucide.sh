@@ -224,6 +224,14 @@ list_newer_versions() {
 sync_one_version() {
   local storage="$1" prev="$2" new="$3"
 
+  # Идемпотентность: если versions/$new уже лежит в storage (повторный прогон
+  # после половинного успеха предыдущего запуска), не качаем заново и не
+  # трогаем manifest для этой пары — доверяем тому, что было собрано раньше.
+  if [ -d "$storage/versions/$new" ]; then
+    log "$new already in storage — skipping"
+    return
+  fi
+
   local tmp; tmp=$(mktemp -d)
 
   # 1. Получаем список изменённых SVG через compare API
@@ -305,7 +313,12 @@ sync_one_version_full() {
   local new_dir="$storage/versions/$new"
   local manifest="$storage/manifest.json"
 
-  [ ! -d "$new_dir" ] || fail "version already exists: $new_dir"
+  # Идемпотентно — см. sync_one_version. Идём вместе с тем же поведением, чтобы
+  # повторный запуск после фолбэка через tarball не падал.
+  if [ -d "$new_dir" ]; then
+    log "$new already in storage — skipping"
+    return
+  fi
   mkdir -p "$new_dir"
 
   local icons_tmp; icons_tmp=$(mktemp -d)
