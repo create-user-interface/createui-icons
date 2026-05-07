@@ -26,6 +26,11 @@ on:
         description: 'Override starting version (default: manifest.latest)'
         required: false
         default: ''
+      patch_release:
+        description: 'Patch release: skip sync-lucide, alias versions/<package.json version>/ from current upstream, publish + deploy.'
+        required: false
+        type: boolean
+        default: false
 
 # Не запускать параллельно — sync пишет в общий VDS-storage.
 concurrency:
@@ -69,7 +74,8 @@ jobs:
       # manifest.json — single source of truth о текущей `latest`-версии.
       # blobs/ + versions/ нужны, чтобы sync-lucide.sh видел уже существующие
       # хэши (для дедупликации) и мог копировать симлинки из prev-версии.
-      - name: Pull storage state from VDS
+      - name: Pull storage state from VDS (sync mode)
+        if: ${{ !inputs.patch_release }}
         run: |
           mkdir -p "$STORAGE_DIR"
           rsync -az --delete \
@@ -79,6 +85,16 @@ jobs:
           rsync -az --delete \
             "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:$REMOTE_STORAGE/versions/" \
             "$STORAGE_DIR/versions/"
+          rsync -az \
+            "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:$REMOTE_STORAGE/manifest.json" \
+            "$STORAGE_DIR/manifest.json"
+
+      # Patch-режим алиасит versions/<latest>/ через SSH cp -a, blobs/ и versions/
+      # на runner-е не нужны — экономим минуты pull-а.
+      - name: Pull manifest from VDS (patch mode)
+        if: ${{ inputs.patch_release }}
+        run: |
+          mkdir -p "$STORAGE_DIR"
           rsync -az \
             "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:$REMOTE_STORAGE/manifest.json" \
             "$STORAGE_DIR/manifest.json"
@@ -104,6 +120,7 @@ jobs:
       # gh authed via GH_TOKEN (preinstalled на ubuntu-latest).
       # bash 5+ уже доступен.
       - name: Run sync-lucide.sh
+        if: ${{ !inputs.patch_release }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -116,29 +133,50 @@ jobs:
       - name: Detect new version
         id: after
         run: |
-          latest=$(jq -r '.latest' "$STORAGE_DIR/manifest.json")
-          upstream=$(jq -r '.upstream // .latest' "$STORAGE_DIR/manifest.json")
-          echo "version=$latest"    >> "$GITHUB_OUTPUT"
-          echo "latest=$latest"     >> "$GITHUB_OUTPUT"
-          echo "upstream=$upstream" >> "$GITHUB_OUTPUT"
-          # Сверяемся по upstream — semantically «появились новые версии lucide».
-          # latest без upstream-движения может измениться только вручную (patch-алиас);
-          # в этом случае scheduled-run не должен переопубликовывать.
-          if [ "$upstream" = "${{ steps.before.outputs.upstream }}" ]; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "No new upstream versions — pipeline will short-circuit."
+          if [ "${{ inputs.patch_release }}" = "true" ]; then
+            # Patch: версия уже поднята в component/package.json на этой ветке,
+            # upstream остаётся прежним — следующий sync должен сравнивать от
+            # реального upstream-тега lucide, а не от patch-алиаса.
+            v=$(node -p "require('./component/package.json').version")
+            upstream="${{ steps.before.outputs.upstream }}"
+            current_latest="${{ steps.before.outputs.latest }}"
+            if [ "$v" = "$upstream" ]; then
+              echo "ERROR: package.json version $v == upstream $upstream — это обычный sync, а не patch."
+              exit 1
+            fi
+            if [ "$v" = "$current_latest" ]; then
+              echo "WARN: package.json version $v == manifest.latest $current_latest — повторный запуск после успеха?"
+            fi
+            echo "version=$v"        >> "$GITHUB_OUTPUT"
+            echo "latest=$v"         >> "$GITHUB_OUTPUT"
+            echo "upstream=$upstream" >> "$GITHUB_OUTPUT"
+            echo "changed=true"      >> "$GITHUB_OUTPUT"
+            echo "Patch release: latest=$v, upstream=$upstream"
           else
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-            echo "New upstream: $upstream (was ${{ steps.before.outputs.upstream }}); npm version: $latest"
+            latest=$(jq -r '.latest' "$STORAGE_DIR/manifest.json")
+            upstream=$(jq -r '.upstream // .latest' "$STORAGE_DIR/manifest.json")
+            echo "version=$latest"    >> "$GITHUB_OUTPUT"
+            echo "latest=$latest"     >> "$GITHUB_OUTPUT"
+            echo "upstream=$upstream" >> "$GITHUB_OUTPUT"
+            # Сверяемся по upstream — semantically «появились новые версии lucide».
+            # latest без upstream-движения может измениться только вручную (patch-алиас);
+            # в этом случае scheduled-run не должен переопубликовывать.
+            if [ "$upstream" = "${{ steps.before.outputs.upstream }}" ]; then
+              echo "changed=false" >> "$GITHUB_OUTPUT"
+              echo "No new upstream versions — pipeline will short-circuit."
+            else
+              echo "changed=true" >> "$GITHUB_OUTPUT"
+              echo "New upstream: $upstream (was ${{ steps.before.outputs.upstream }}); npm version: $latest"
+            fi
           fi
 
-      # ─── Деплой блобов/симлинков ─────────────────────────────────────────
+      # ─── Деплой блобов/симлинков (sync mode) ─────────────────────────────
       # blobs/ — content-addressable, можно с --ignore-existing (хэш = идентичность).
       # versions/ — только новые директории, без удаления старых (--ignore-existing).
       # manifest.json — атомарно последним: серверу видно «новую latest» только
       # после того, как все её блобы и симлинки уже доехали.
       - name: Push blobs and versions to VDS
-        if: steps.after.outputs.changed == 'true'
+        if: ${{ !inputs.patch_release && steps.after.outputs.changed == 'true' }}
         run: |
           rsync -az --ignore-existing \
             "$STORAGE_DIR/blobs/" \
@@ -146,6 +184,44 @@ jobs:
           rsync -az --ignore-existing \
             "$STORAGE_DIR/versions/" \
             "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:$REMOTE_STORAGE/versions/"
+          rsync -az \
+            "$STORAGE_DIR/manifest.json" \
+            "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:$REMOTE_STORAGE/manifest.json"
+
+      # ─── Patch mode: alias versions/<latest>/ + manifest update ─────────
+      # cp -a сохраняет относительные симлинки → blobs/, аппка резолвит
+      # /<latest>/{icon}.svg тем же блобом, что и /<upstream>/{icon}.svg.
+      # Гард по test -d делает шаг идемпотентным.
+      - name: Alias versions/<latest>/ on VDS (patch mode)
+        if: ${{ inputs.patch_release && steps.after.outputs.changed == 'true' }}
+        run: |
+          target="${{ steps.after.outputs.latest }}"
+          upstream="${{ steps.after.outputs.upstream }}"
+          ssh "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" "
+            set -e
+            test -d $REMOTE_STORAGE/versions/$upstream \
+              || { echo 'upstream versions/$upstream missing on VDS'; exit 1; }
+            if [ ! -d $REMOTE_STORAGE/versions/$target ]; then
+              cp -a $REMOTE_STORAGE/versions/$upstream $REMOTE_STORAGE/versions/$target
+              echo 'aliased versions/$upstream → versions/$target'
+            else
+              echo 'versions/$target already exists — skipping alias'
+            fi
+          "
+
+      # manifest.upstream НЕ трогаем — следующий sync должен сравнивать от
+      # реального upstream-тега, а не от patch-алиаса.
+      - name: Update manifest.latest on VDS (patch mode)
+        if: ${{ inputs.patch_release && steps.after.outputs.changed == 'true' }}
+        run: |
+          v="${{ steps.after.outputs.latest }}"
+          upstream="${{ steps.after.outputs.upstream }}"
+          jq --arg v "$v" --arg u "$upstream" \
+             '.latest = $v
+              | .upstream = $u
+              | .versions[$v] = .versions[$u]' \
+             "$STORAGE_DIR/manifest.json" > "$STORAGE_DIR/manifest.json.tmp"
+          mv "$STORAGE_DIR/manifest.json.tmp" "$STORAGE_DIR/manifest.json"
           rsync -az \
             "$STORAGE_DIR/manifest.json" \
             "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:$REMOTE_STORAGE/manifest.json"
@@ -171,13 +247,22 @@ jobs:
             landing/package-lock.json
           registry-url: 'https://registry.npmjs.org'
 
+      # Patch mode: версия уже бампнута локально и закоммичена, lucide-dep
+      # не двигаем (upstream тот же).
       - name: Bump component version + lucide dep
-        if: steps.after.outputs.changed == 'true'
+        if: ${{ !inputs.patch_release && steps.after.outputs.changed == 'true' }}
         working-directory: component
         run: |
           v="${{ steps.after.outputs.version }}"
           npm version "$v" --no-git-tag-version --allow-same-version
           npm install --save-dev "lucide@$v"
+
+      # Patch mode: пропустили шаг Bump+install выше, поэтому ставим зависимости
+      # сейчас. Sync mode уже получил deps как побочку `npm install --save-dev lucide`.
+      - name: Install component deps (patch mode)
+        if: ${{ inputs.patch_release && steps.after.outputs.changed == 'true' }}
+        working-directory: component
+        run: npm ci
 
       - name: Build component bundle
         if: steps.after.outputs.changed == 'true'
@@ -221,10 +306,18 @@ jobs:
         if: steps.after.outputs.changed == 'true'
         run: npx -y npm@latest install -g npm@latest
 
+      # Idempotent: повторный dispatch (например, после ошибки в landing-шаге)
+      # не падает на «already published».
       - name: Publish to npm
         if: steps.after.outputs.changed == 'true'
         working-directory: component
-        run: npm publish --access public --provenance
+        run: |
+          v="${{ steps.after.outputs.version }}"
+          if npm view "@createui-dev/icons@$v" version >/dev/null 2>&1; then
+            echo "v$v already on npm — skipping publish"
+          else
+            npm publish --access public --provenance
+          fi
 
       # ─── Landing build + deploy ──────────────────────────────────────────
       # prebuild подхватывает только что bumped component/package.json.version
@@ -266,14 +359,14 @@ jobs:
       # Коммитим только то, что должно быть в репо: bumped package.json/lock.
       # landing/package-lock.json не трогается workflow-ом (npm ci его не
       # меняет, landing-deps не зависят от lucide) — не включаем в git add.
-      - name: Commit and tag
-        if: steps.after.outputs.changed == 'true'
+      - name: Commit and tag (sync mode)
+        if: ${{ !inputs.patch_release && steps.after.outputs.changed == 'true' }}
         run: |
           v="${{ steps.after.outputs.version }}"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           # icon-names.types.ts регенерируется prebuild-ом из lucide npm
-          # package — его диff коммитим, чтобы landing (deploy-landing.yml
+          # package — его диф коммитим, чтобы landing (deploy-landing.yml
           # на не-sync push-ах) и TS-консьюмеры пакета видели актуальный
           # TIconName. landing/package-lock.json не трогается (npm ci его
           # не меняет, landing-deps не зависят от lucide).
@@ -283,6 +376,21 @@ jobs:
           # lightweight теги остаются локальными и в релизе нет git-reference.
           git tag -a "v$v" -m "v$v"
           git push --follow-tags
+
+      # Patch mode: bump-коммит уже на main (его пушат руками вместе с
+      # фиксом, ради которого делается patch). Воркфлоу только тегает.
+      - name: Tag (patch mode)
+        if: ${{ inputs.patch_release && steps.after.outputs.changed == 'true' }}
+        run: |
+          v="${{ steps.after.outputs.version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git rev-parse "v$v" >/dev/null 2>&1; then
+            echo "tag v$v already exists — skipping"
+          else
+            git tag -a "v$v" -m "v$v"
+            git push origin "v$v"
+          fi
 
       # ─── GitHub Release ──────────────────────────────────────────────────
       # Создаётся после пуша тега. Diff берём из Lucide compare API между
@@ -294,51 +402,70 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Compare идёт по upstream-тегам (реально существуют в lucide-icons/lucide).
-          # release_tag = latest (что опубликовали в npm); может отличаться от upstream
-          # после patch-релиза, но в обычном sync они равны.
-          before="${{ steps.before.outputs.upstream }}"
-          after="${{ steps.after.outputs.upstream }}"
           release_tag="${{ steps.after.outputs.latest }}"
+          if gh release view "v${release_tag}" >/dev/null 2>&1; then
+            echo "release v${release_tag} already exists — skipping"
+            exit 0
+          fi
 
-          # Собрать список изменений из Lucide compare API.
-          # --paginate — на случай крупного рефакторинга с > 300 изменённых файлов.
-          # `changed` — алиас `modified` в некоторых ответах GitHub API.
-          # Lucide 1.x теги без префикса `v` (1.8.0, 1.11.0, ...).
-          files=$(gh api --paginate "repos/lucide-icons/lucide/compare/${before}...${after}" \
-            --jq '[.files[]?
-              | select(.filename | startswith("icons/") and endswith(".svg"))
-              | {
-                  status,
-                  name: (.filename | ltrimstr("icons/") | rtrimstr(".svg")),
-                  prev: (.previous_filename // "" | ltrimstr("icons/") | rtrimstr(".svg"))
-                }]')
+          if [ "${{ inputs.patch_release }}" = "true" ]; then
+            # Patch: upstream lucide не двигался, compare пуст. Тело — короткая
+            # справка + ссылки. Источник «что именно поправили» — git log.
+            upstream="${{ steps.after.outputs.upstream }}"
+            {
+              printf "Patch release — без изменений в Lucide (\`%s\`).\n\n" "$upstream"
+              printf "См. [git log](https://github.com/create-user-interface/createui-icons/commits/v%s) для деталей.\n\n" "$release_tag"
+              printf -- "---\n\n"
+              printf -- "- npm: [\`@createui-dev/icons@%s\`](https://www.npmjs.com/package/@createui-dev/icons/v/%s)\n" "$release_tag" "$release_tag"
+              printf -- "- CDN bundle: \`https://icon.createui.dev/%s/createui-icons.js\`\n" "$release_tag"
+              printf -- "- SVG API: \`https://icon.createui.dev/%s/{icon}.svg\` (icons identical to v%s)\n" "$release_tag" "$upstream"
+            } > /tmp/release-body.md
+          else
+            # Compare идёт по upstream-тегам (реально существуют в lucide-icons/lucide).
+            # release_tag = latest (что опубликовали в npm); может отличаться от upstream
+            # после patch-релиза, но в обычном sync они равны.
+            before="${{ steps.before.outputs.upstream }}"
+            after="${{ steps.after.outputs.upstream }}"
 
-          added=$(jq     '[.[] | select(.status == "added")    | .name] | unique'                                 <<<"$files")
-          modified=$(jq  '[.[] | select(.status == "modified" or .status == "changed") | .name] | unique'          <<<"$files")
-          removed=$(jq   '[.[] | select(.status == "removed")  | .name] | unique'                                 <<<"$files")
-          renamed=$(jq   '[.[] | select(.status == "renamed")  | "\(.prev) → \(.name)"] | unique'                 <<<"$files")
+            # Собрать список изменений из Lucide compare API.
+            # --paginate — на случай крупного рефакторинга с > 300 изменённых файлов.
+            # `changed` — алиас `modified` в некоторых ответах GitHub API.
+            # Lucide 1.x теги без префикса `v` (1.8.0, 1.11.0, ...).
+            files=$(gh api --paginate "repos/lucide-icons/lucide/compare/${before}...${after}" \
+              --jq '[.files[]?
+                | select(.filename | startswith("icons/") and endswith(".svg"))
+                | {
+                    status,
+                    name: (.filename | ltrimstr("icons/") | rtrimstr(".svg")),
+                    prev: (.previous_filename // "" | ltrimstr("icons/") | rtrimstr(".svg"))
+                  }]')
 
-          render_section() {
-            local title="$1" data="$2"
-            local count; count=$(jq 'length' <<<"$data")
-            [ "$count" -eq 0 ] && return
-            printf "## %s (%s)\n\n" "$title" "$count"
-            jq -r '.[] | "- `\(.)`"' <<<"$data"
-            printf "\n"
-          }
+            added=$(jq     '[.[] | select(.status == "added")    | .name] | unique'                                 <<<"$files")
+            modified=$(jq  '[.[] | select(.status == "modified" or .status == "changed") | .name] | unique'          <<<"$files")
+            removed=$(jq   '[.[] | select(.status == "removed")  | .name] | unique'                                 <<<"$files")
+            renamed=$(jq   '[.[] | select(.status == "renamed")  | "\(.prev) → \(.name)"] | unique'                 <<<"$files")
 
-          {
-            printf "Synced from Lucide [\`%s\`](https://github.com/lucide-icons/lucide/releases/tag/%s) → [\`%s\`](https://github.com/lucide-icons/lucide/releases/tag/%s).\n\n" "$before" "$before" "$after" "$after"
-            render_section "Added"    "$added"
-            render_section "Modified" "$modified"
-            render_section "Removed"  "$removed"
-            render_section "Renamed"  "$renamed"
-            printf -- "---\n\n"
-            printf -- "- npm: [\`@createui-dev/icons@%s\`](https://www.npmjs.com/package/@createui-dev/icons/v/%s)\n" "$release_tag" "$release_tag"
-            printf -- "- CDN bundle: \`https://icon.createui.dev/%s/createui-icons.js\`\n" "$release_tag"
-            printf -- "- SVG API: \`https://icon.createui.dev/%s/{icon}.svg\`\n" "$release_tag"
-          } > /tmp/release-body.md
+            render_section() {
+              local title="$1" data="$2"
+              local count; count=$(jq 'length' <<<"$data")
+              [ "$count" -eq 0 ] && return
+              printf "## %s (%s)\n\n" "$title" "$count"
+              jq -r '.[] | "- `\(.)`"' <<<"$data"
+              printf "\n"
+            }
+
+            {
+              printf "Synced from Lucide [\`%s\`](https://github.com/lucide-icons/lucide/releases/tag/%s) → [\`%s\`](https://github.com/lucide-icons/lucide/releases/tag/%s).\n\n" "$before" "$before" "$after" "$after"
+              render_section "Added"    "$added"
+              render_section "Modified" "$modified"
+              render_section "Removed"  "$removed"
+              render_section "Renamed"  "$renamed"
+              printf -- "---\n\n"
+              printf -- "- npm: [\`@createui-dev/icons@%s\`](https://www.npmjs.com/package/@createui-dev/icons/v/%s)\n" "$release_tag" "$release_tag"
+              printf -- "- CDN bundle: \`https://icon.createui.dev/%s/createui-icons.js\`\n" "$release_tag"
+              printf -- "- SVG API: \`https://icon.createui.dev/%s/{icon}.svg\`\n" "$release_tag"
+            } > /tmp/release-body.md
+          fi
 
           gh release create "v${release_tag}" \
             --title "v${release_tag}" \
