@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "generate": "node scripts/sync-version.mjs && node scripts/generate-icons-list.mjs",
+    "generate": "node scripts/sync-version.mjs && node scripts/generate-icons-list.mjs && node scripts/generate-changelog.mjs",
     "postinstall": "npm run generate",
     "predev": "npm run generate",
     "dev": "astro dev",

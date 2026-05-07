@@ -176,6 +176,17 @@ const en: Dictionary = {
     },
   },
 
+  changelog: {
+    title: "What's new",
+    allReleases: 'All releases →',
+    counts: {
+      added: 'added',
+      modified: 'modified',
+      removed: 'removed',
+      renamed: 'renamed',
+    },
+  },
+
   footer: {
     attributionBefore: 'Original icons by',
     attributionAfter: '. ISC license.',

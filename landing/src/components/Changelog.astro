@@ -1,0 +1,67 @@
+---
+import styles from '../styles/Changelog.module.css';
+import type { Lang } from '../i18n';
+import { useT } from '../i18n';
+import { CHANGELOG } from '../generated/changelog';
+
+interface Props { lang?: Lang }
+const { lang = 'ru' } = Astro.props;
+const t = useT(lang);
+
+// Локализованный YYYY-MM-DD без зависимости от runtime locale CI-раннера.
+const dateFmt = new Intl.DateTimeFormat(lang === 'ru' ? 'ru-RU' : 'en-US', {
+  year: 'numeric',
+  month: 'short',
+  day: 'numeric',
+});
+
+const ALL_RELEASES = 'https://github.com/create-user-interface/createui-icons/releases';
+
+type CountKey = 'added' | 'modified' | 'removed' | 'renamed';
+const COUNT_KEYS: ReadonlyArray<CountKey> = ['added', 'modified', 'removed', 'renamed'];
+const COUNT_CLASS: Record<CountKey, string> = {
+  added: styles.countAdded,
+  modified: styles.countModified,
+  removed: styles.countRemoved,
+  renamed: styles.countRenamed,
+};
+---
+
+{CHANGELOG.length > 0 && (
+  <section class={styles.section}>
+    <div class={styles.container}>
+      <div class={styles.header}>
+        <h2 class={styles.title}>{t.changelog.title}</h2>
+        <a class={styles.allLink} href={ALL_RELEASES} target="_blank" rel="noopener noreferrer">
+          {t.changelog.allReleases}
+        </a>
+      </div>
+      <ul class={styles.list}>
+        {CHANGELOG.map((entry) => (
+          <li>
+            <a class={styles.entry} href={entry.url} target="_blank" rel="noopener noreferrer">
+              <div class={styles.meta}>
+                <span class={styles.tag}>{entry.tag}</span>
+                <span class={styles.date}>{dateFmt.format(new Date(entry.publishedAt))}</span>
+              </div>
+              <div class={styles.body}>
+                <p class={styles.summary} set:html={entry.summaryHtml} />
+                {COUNT_KEYS.some((k) => entry.counts[k]) && (
+                  <div class={styles.counts}>
+                    {COUNT_KEYS.map((k) =>
+                      entry.counts[k] ? (
+                        <span class={`${styles.count} ${COUNT_CLASS[k]}`}>
+                          {t.changelog.counts[k]}: {entry.counts[k]}
+                        </span>
+                      ) : null,
+                    )}
+                  </div>
+                )}
+              </div>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </section>
+)}

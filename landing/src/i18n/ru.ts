@@ -176,6 +176,17 @@ const ru: Dictionary = {
     },
   },
 
+  changelog: {
+    title: 'Что нового',
+    allReleases: 'Все релизы →',
+    counts: {
+      added: 'добавлено',
+      modified: 'изменено',
+      removed: 'удалено',
+      renamed: 'переименовано',
+    },
+  },
+
   footer: {
     attributionBefore: 'Оригинальные иконки от',
     attributionAfter: '. Лицензия ISC.',

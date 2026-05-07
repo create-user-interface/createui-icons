@@ -11,6 +11,7 @@ import Performance from './Performance.astro';
 import Talk from './Talk.astro';
 import Faq from './Faq.astro';
 import Support from './Support.astro';
+import Changelog from './Changelog.astro';
 import Footer from './Footer.astro';
 
 interface Props {
@@ -32,5 +33,6 @@ const { lang } = Astro.props;
   <Talk lang={lang} />
   <Faq lang={lang} />
   <Support lang={lang} />
+  <Changelog lang={lang} />
 </main>
 <Footer lang={lang} />

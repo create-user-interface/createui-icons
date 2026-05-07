@@ -103,6 +103,16 @@ export interface Dictionary {
       copied: string;
     };
   };
+  changelog: {
+    title: string;
+    allReleases: string;
+    counts: {
+      added: string;
+      modified: string;
+      removed: string;
+      renamed: string;
+    };
+  };
   footer: {
     attributionBefore: string;
     attributionAfter: string;
