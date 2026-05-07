@@ -8,60 +8,76 @@ interface Props { lang?: Lang }
 const { lang = 'ru' } = Astro.props;
 const t = useT(lang);
 
-// Локализованный YYYY-MM-DD без зависимости от runtime locale CI-раннера.
-const dateFmt = new Intl.DateTimeFormat(lang === 'ru' ? 'ru-RU' : 'en-US', {
-  year: 'numeric',
-  month: 'short',
-  day: 'numeric',
-});
+// Локализуем дату с нумерическим месяцем — в моно-стилистике
+// «MAY 7, 2026» / «7 МАЯ 2026 Г.» читаются криво. ISO-подобный
+// формат `YYYY · MM · DD` нейтральный и rendering-safe в обеих локалях.
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  const yyyy = d.getUTCFullYear();
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(d.getUTCDate()).padStart(2, '0');
+  return `${yyyy} · ${mm} · ${dd}`;
+}
 
 const ALL_RELEASES = 'https://github.com/create-user-interface/createui-icons/releases';
 
 type CountKey = 'added' | 'modified' | 'removed' | 'renamed';
 const COUNT_KEYS: ReadonlyArray<CountKey> = ['added', 'modified', 'removed', 'renamed'];
-const COUNT_CLASS: Record<CountKey, string> = {
-  added: styles.countAdded,
-  modified: styles.countModified,
-  removed: styles.countRemoved,
-  renamed: styles.countRenamed,
+const COUNT_GLYPH: Record<CountKey, string> = {
+  added: '+',
+  modified: '~',
+  removed: '−', // U+2212 MINUS SIGN — выровнен по моно-сетке, в отличие от ASCII '-'
+  renamed: '↻',
 };
 ---
 
 {CHANGELOG.length > 0 && (
-  <section class={styles.section}>
+  <section class={styles.section} id="changelog">
     <div class={styles.container}>
-      <div class={styles.header}>
-        <h2 class={styles.title}>{t.changelog.title}</h2>
+      <p class={styles.eyebrow}>{t.changelog.eyebrow}</p>
+      <h2 class={styles.title}>{t.changelog.title}</h2>
+
+      <ul class={styles.list}>
+        {CHANGELOG.map((entry) => {
+          const hasCounts = COUNT_KEYS.some((k) => entry.counts[k]);
+          return (
+            <li>
+              <a class={styles.entry} href={entry.url} target="_blank" rel="noopener noreferrer">
+                <div class={styles.row}>
+                  <span class={styles.tag}>{entry.tag}</span>
+                  <span class={styles.dot} aria-hidden="true">·</span>
+                  <span class={styles.date}>{formatDate(entry.publishedAt)}</span>
+                  {hasCounts && (
+                    <>
+                      <span class={styles.dot} aria-hidden="true">·</span>
+                      <span class={styles.counts}>
+                        {COUNT_KEYS.map((k) =>
+                          entry.counts[k] ? (
+                            <span
+                              class={styles.count}
+                              aria-label={`${entry.counts[k]} ${t.changelog.counts[k]}`}
+                            >
+                              <span aria-hidden="true">{COUNT_GLYPH[k]}{entry.counts[k]}</span>
+                            </span>
+                          ) : null,
+                        )}
+                      </span>
+                    </>
+                  )}
+                  <span class={styles.arrow} aria-hidden="true">→</span>
+                </div>
+                <p class={styles.summary} set:html={entry.summaryHtml} />
+              </a>
+            </li>
+          );
+        })}
+      </ul>
+
+      <div class={styles.allLinkWrap}>
         <a class={styles.allLink} href={ALL_RELEASES} target="_blank" rel="noopener noreferrer">
           {t.changelog.allReleases}
         </a>
       </div>
-      <ul class={styles.list}>
-        {CHANGELOG.map((entry) => (
-          <li>
-            <a class={styles.entry} href={entry.url} target="_blank" rel="noopener noreferrer">
-              <div class={styles.meta}>
-                <span class={styles.tag}>{entry.tag}</span>
-                <span class={styles.date}>{dateFmt.format(new Date(entry.publishedAt))}</span>
-              </div>
-              <div class={styles.body}>
-                <p class={styles.summary} set:html={entry.summaryHtml} />
-                {COUNT_KEYS.some((k) => entry.counts[k]) && (
-                  <div class={styles.counts}>
-                    {COUNT_KEYS.map((k) =>
-                      entry.counts[k] ? (
-                        <span class={`${styles.count} ${COUNT_CLASS[k]}`}>
-                          {t.changelog.counts[k]}: {entry.counts[k]}
-                        </span>
-                      ) : null,
-                    )}
-                  </div>
-                )}
-              </div>
-            </a>
-          </li>
-        ))}
-      </ul>
     </div>
   </section>
 )}

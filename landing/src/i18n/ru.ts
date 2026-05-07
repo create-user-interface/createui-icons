@@ -177,6 +177,7 @@ const ru: Dictionary = {
   },
 
   changelog: {
+    eyebrow: 'Релизы',
     title: 'Что нового',
     allReleases: 'Все релизы →',
     counts: {

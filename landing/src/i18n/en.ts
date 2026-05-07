@@ -177,6 +177,7 @@ const en: Dictionary = {
   },
 
   changelog: {
+    eyebrow: 'Releases',
     title: "What's new",
     allReleases: 'All releases →',
     counts: {

@@ -104,6 +104,7 @@ export interface Dictionary {
     };
   };
   changelog: {
+    eyebrow: string;
     title: string;
     allReleases: string;
     counts: {
