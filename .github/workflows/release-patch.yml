@@ -1,0 +1,231 @@
+name: release-patch
+
+# Patch-релиз без upstream-движения lucide:
+#   1. версия в component/package.json уже поднята локально и закоммичена
+#   2. собираем bundle, npm publish (OIDC) — fail-fast если что-то с auth
+#   3. алиасим versions/<latest>/ → копию versions/<upstream>/ на VDS
+#      (cp -a сохраняет относительные симлинки → blobs/, аппка SVG-сервера
+#       резолвит /<latest>/{icon}.svg тем же блобом, что и /<upstream>/)
+#   4. деплоим bundle под /<latest>/, обновляем manifest.latest
+#      (manifest.upstream НЕ трогаем — следующий sync должен сравнивать
+#       от реального upstream-тега, а не от patch-алиаса)
+#   5. собираем + деплоим лендинг под новую версию
+#   6. tag + GitHub release
+#
+# Идемпотентность: каждый внешний эффект защищён guard-ом, чтобы повторный
+# dispatch после половинного успеха не падал и не дублировал.
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: release-patch
+  cancel-in-progress: false
+
+env:
+  STORAGE_DIR: ${{ github.workspace }}/icons-storage
+  REMOTE_STORAGE: /var/icons
+  REMOTE_BUNDLES: /var/icons/bundles
+  DOMAIN_API: icon.createui.dev
+  DOMAIN_LANDING: icons.createui.dev
+  REMOTE_LANDING: /var/www/icons-landing
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup SSH agent
+        uses: webfactory/ssh-agent@v0.10.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Trust VDS host key
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "${{ secrets.SERVER_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Read target version from package.json
+        id: version
+        run: |
+          v=$(node -p "require('./component/package.json').version")
+          echo "latest=$v" >> "$GITHUB_OUTPUT"
+          echo "Target version: v$v"
+
+      - name: Pull manifest.json from VDS
+        run: |
+          mkdir -p "$STORAGE_DIR"
+          rsync -az \
+            "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:$REMOTE_STORAGE/manifest.json" \
+            "$STORAGE_DIR/manifest.json"
+
+      - name: Read upstream from manifest
+        id: manifest
+        run: |
+          upstream=$(jq -r '.upstream // .latest' "$STORAGE_DIR/manifest.json")
+          current_latest=$(jq -r '.latest' "$STORAGE_DIR/manifest.json")
+          echo "upstream=$upstream"             >> "$GITHUB_OUTPUT"
+          echo "current_latest=$current_latest" >> "$GITHUB_OUTPUT"
+          echo "Upstream: $upstream, current latest: $current_latest"
+
+      - name: Sanity check
+        run: |
+          target="${{ steps.version.outputs.latest }}"
+          upstream="${{ steps.manifest.outputs.upstream }}"
+          if [ "$target" = "$upstream" ]; then
+            echo "Target $target == upstream $upstream — это обычный sync, а не patch."
+            echo "Этот workflow только для случаев, когда npm-версия отличается от upstream-тега lucide."
+            exit 1
+          fi
+          # upstream-каталог должен быть на месте — иначе нечего алиасить
+          ssh "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" \
+            "test -d $REMOTE_STORAGE/versions/$upstream" \
+            || { echo "$REMOTE_STORAGE/versions/$upstream missing on VDS"; exit 1; }
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: |
+            component/package-lock.json
+            landing/package-lock.json
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install component deps
+        working-directory: component
+        run: npm ci
+
+      - name: Build component bundle
+        working-directory: component
+        run: npm run build
+
+      # ─── npm publish ─ fail-fast до изменения VDS-state ──────────────────
+      # Если упадёт на trust config / OIDC — VDS остаётся нетронутым,
+      # повторный запуск чистый. Гард по `npm view` нужен на случай,
+      # когда publish уже прошёл, а follow-up шаги завалились.
+      - name: Upgrade npm for OIDC publishing
+        run: npx -y npm@latest install -g npm@latest
+
+      - name: Publish to npm (skip if already published)
+        working-directory: component
+        run: |
+          v="${{ steps.version.outputs.latest }}"
+          if npm view "@createui-dev/icons@$v" version >/dev/null 2>&1; then
+            echo "v$v already on npm — skipping publish"
+          else
+            npm publish --access public --provenance
+          fi
+
+      # ─── VDS state ────────────────────────────────────────────────────────
+      - name: Alias versions/<latest>/ on VDS
+        run: |
+          target="${{ steps.version.outputs.latest }}"
+          upstream="${{ steps.manifest.outputs.upstream }}"
+          ssh "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" "
+            set -e
+            if [ ! -d $REMOTE_STORAGE/versions/$target ]; then
+              cp -a $REMOTE_STORAGE/versions/$upstream $REMOTE_STORAGE/versions/$target
+              echo 'aliased versions/$upstream → versions/$target'
+            else
+              echo 'versions/$target already exists — skipping alias'
+            fi
+          "
+
+      - name: Deploy CDN bundle to VDS
+        run: |
+          v="${{ steps.version.outputs.latest }}"
+          rsync -az --mkpath \
+            component/dist/bundle/createui-icons.js \
+            component/dist/bundle/createui-icons.js.map \
+            "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:$REMOTE_BUNDLES/$v/"
+
+      - name: Update manifest.latest (upstream unchanged)
+        run: |
+          v="${{ steps.version.outputs.latest }}"
+          upstream="${{ steps.manifest.outputs.upstream }}"
+          jq --arg v "$v" --arg u "$upstream" \
+             '.latest = $v
+              | .upstream = $u
+              | .versions[$v] = .versions[$u]' \
+             "$STORAGE_DIR/manifest.json" > "$STORAGE_DIR/manifest.json.tmp"
+          mv "$STORAGE_DIR/manifest.json.tmp" "$STORAGE_DIR/manifest.json"
+          rsync -az \
+            "$STORAGE_DIR/manifest.json" \
+            "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:$REMOTE_STORAGE/manifest.json"
+
+      - name: Smoke-test API endpoints
+        run: |
+          v="${{ steps.version.outputs.latest }}"
+          curl -fsS "https://$DOMAIN_API/health" > /dev/null
+          curl -fsS "https://$DOMAIN_API/$v/user.svg" > /dev/null
+          curl -fsS "https://$DOMAIN_API/$v/createui-icons.js" > /dev/null
+          curl -fsS "https://$DOMAIN_API/$v/createui-icons.js.map" > /dev/null
+          echo "API endpoints OK for $v"
+
+      # ─── Landing build + deploy ──────────────────────────────────────────
+      - name: Install landing deps
+        working-directory: landing
+        run: npm ci
+
+      - name: Build landing
+        working-directory: landing
+        run: npm run build
+
+      - name: Deploy landing to VDS
+        run: |
+          rsync -az --delete \
+            landing/dist/ \
+            "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:$REMOTE_LANDING/"
+
+      - name: Smoke-test landing
+        run: |
+          v="${{ steps.version.outputs.latest }}"
+          curl -fsS "https://$DOMAIN_LANDING/" > /dev/null
+          curl -fsS "https://$DOMAIN_LANDING/en/" > /dev/null
+          curl -fsS "https://$DOMAIN_LANDING/" | grep -q "/$v/" || {
+            echo "Landing HTML doesn't reference v$v"
+            exit 1
+          }
+          echo "Landing OK (v$v)"
+
+      # ─── Tag + release ───────────────────────────────────────────────────
+      - name: Tag release
+        run: |
+          v="${{ steps.version.outputs.latest }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git rev-parse "v$v" >/dev/null 2>&1; then
+            echo "tag v$v already exists — skipping"
+          else
+            git tag -a "v$v" -m "v$v"
+            git push origin "v$v"
+          fi
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          v="${{ steps.version.outputs.latest }}"
+          upstream="${{ steps.manifest.outputs.upstream }}"
+          if gh release view "v$v" >/dev/null 2>&1; then
+            echo "release v$v already exists — skipping"
+          else
+            gh release create "v$v" \
+              --title "v$v" \
+              --notes "Patch release — без изменений в Lucide ($upstream).
+
+См. CHANGELOG/коммиты для деталей.
+
+- npm: [\`@createui-dev/icons@$v\`](https://www.npmjs.com/package/@createui-dev/icons/v/$v)
+- CDN bundle: \`https://icon.createui.dev/$v/createui-icons.js\`
+- SVG API: \`https://icon.createui.dev/$v/{icon}.svg\` (icons identical to v$upstream)"
+          fi

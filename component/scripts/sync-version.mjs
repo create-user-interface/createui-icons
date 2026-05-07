@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Генерирует component/src/version.ts из component/package.json.version.
-// Запускается в prebuild/postinstall — LUCIDE_VERSION в бандле всегда
+// Запускается в prebuild/prepare — LUCIDE_VERSION в бандле всегда
 // совпадает с опубликованной npm-версией.
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';

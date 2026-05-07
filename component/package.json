@@ -1,6 +1,6 @@
 {
   "name": "@createui-dev/icons",
-  "version": "1.14.0",
+  "version": "1.14.1",
   "description": "Framework-agnostic icon web component for Create UI",
   "license": "MIT",
   "homepage": "https://icons.createui.dev",
@@ -47,7 +47,7 @@
     "sync-version": "node scripts/sync-version.mjs",
     "generate:names": "node scripts/generate-icon-names.mjs",
     "generate": "npm run sync-version && npm run generate:names",
-    "postinstall": "npm run sync-version",
+    "prepare": "npm run sync-version",
     "prebuild": "npm run generate",
     "build": "npm run build:types && npm run build:bundle",
     "build:types": "tsc",
