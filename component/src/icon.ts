@@ -4,10 +4,12 @@ import type { TIconName } from './icon-names.types'
 export type { TIconName }
 export { LUCIDE_VERSION }
 
+export type NumericLike = number | `${number}`
+
 export interface IIconProps {
   name: TIconName
-  size?: number
-  stroke?: number
+  size?: NumericLike
+  stroke?: NumericLike
 }
 
 export interface CreateUIIconElement extends HTMLElement {
