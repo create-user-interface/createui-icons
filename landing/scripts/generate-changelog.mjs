@@ -27,14 +27,19 @@ async function fetchReleases() {
   return r.json();
 }
 
-// Достаём первый смысловой абзац: всё до первого `## `-заголовка или `---`-разделителя.
-// Этого достаточно — sync.yml пишет лидом «Synced from … → …» (sync) или
-// «Patch release — …» (patch), и оба варианта самодостаточны.
+// Достаём первый смысловой абзац: текст до первой пустой строки, `## `-заголовка
+// или `---`-разделителя. Sync-релизы дают лид «Synced from … → …», patch-релизы —
+// «Patch release — …». Обрыв на первой пустой строке заодно отрезает у патчей
+// служебную строчку «См. git log для деталей.» — на лендинге она дублирует
+// клик по самой карточке.
 function extractSummary(body) {
-  const lines = body.split('\n');
   const out = [];
-  for (const line of lines) {
+  for (const line of body.split('\n')) {
     if (line.startsWith('## ') || line.startsWith('---')) break;
+    if (line.trim() === '') {
+      if (out.length === 0) continue; // пропускаем ведущие пустые строки
+      break;                          // отрезаем на первой пустой после контента
+    }
     out.push(line);
   }
   return out.join('\n').trim();
