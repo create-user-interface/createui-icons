@@ -103,6 +103,11 @@ func (s *server) health(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) icon(w http.ResponseWriter, r *http.Request) {
+	// ACAO ставим до любых веток. Иначе на 404/400 ответ уходит без CORS, и
+	// браузер показывает "blocked by CORS policy" вместо реального статуса —
+	// JS на лендинге не может отличить «иконки нет» от «нет доступа».
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -141,7 +146,7 @@ func (s *server) icon(w http.ResponseWriter, r *http.Request) {
 	// контент для данного URL зафиксирован навсегда. `immutable` запрещает
 	// revalidation даже на Cmd+R. Match с CDN-бандлом в nginx/icon.conf.
 	h.Set("Cache-Control", "public, max-age=31536000, immutable")
-	h.Set("Access-Control-Allow-Origin", "*")
+	// ACAO уже выставлен в начале handler-а, чтобы покрывать 4xx-ответы тоже.
 	h.Set("Content-Length", strconv.Itoa(len(out)))
 	w.WriteHeader(http.StatusOK)
 	if r.Method != http.MethodHead {
