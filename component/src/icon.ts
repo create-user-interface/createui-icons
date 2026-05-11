@@ -1,5 +1,5 @@
-import { LUCIDE_VERSION } from './version'
-import type { TIconName } from './icon-names.types'
+import { LUCIDE_VERSION } from './version.js'
+import type { TIconName } from './icon-names.types.js'
 
 export type { TIconName }
 export { LUCIDE_VERSION }

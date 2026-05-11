@@ -1,5 +1,5 @@
 import type * as React from 'react'
-import type { IIconProps } from './icon'
+import type { IIconProps } from './icon.js'
 
 declare module 'react' {
   namespace JSX {
