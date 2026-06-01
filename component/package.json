@@ -1,6 +1,6 @@
 {
   "name": "@createui-dev/icons",
-  "version": "1.16.0",
+  "version": "1.17.0",
   "description": "Framework-agnostic icon web component for Create UI",
   "license": "MIT",
   "homepage": "https://icons.createui.dev",
@@ -58,7 +58,7 @@
   "devDependencies": {
     "@types/react": "*",
     "esbuild": "^0.28.0",
-    "lucide": "^1.16.0",
+    "lucide": "^1.17.0",
     "solid-js": "*",
     "typescript": "^6.0.2"
   }
